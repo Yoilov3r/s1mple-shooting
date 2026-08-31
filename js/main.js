@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { state } from './state.js';
 import { createRoom, createLights } from './scene.js';
 import { initControls, updateControls } from './controls.js';
+import { attachWeapon } from './gun.js';
 
 function createRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -56,6 +57,10 @@ function bootstrap() {
   // 房间 + 光照
   state.scene.add(createRoom(60));
   state.scene.add(createLights());
+
+  // 相机加入场景，才能让挂在相机下的手枪被渲染
+  state.scene.add(state.camera);
+  attachWeapon(state.camera);
 
   // 控制
   initControls();
