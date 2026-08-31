@@ -32,11 +32,14 @@ export function initGame() {
 
   document.addEventListener('score:updated', updateScoreUI);
 
-  // 退出指针锁 = 暂停（仅在游戏中）
+  // 退出指针锁 = 暂停；仅在"曾经锁定→解锁"时触发，避免锁定失败误暂停
+  let wasLocked = false;
   document.addEventListener('pointerlockchange', () => {
-    if (state.running && document.pointerLockElement !== document.body) {
+    const nowLocked = document.pointerLockElement === document.body;
+    if (state.running && wasLocked && !nowLocked) {
       pauseGame();
     }
+    wasLocked = nowLocked;
   });
 }
 
