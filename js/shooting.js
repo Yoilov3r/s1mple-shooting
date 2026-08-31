@@ -1,17 +1,71 @@
-// 射击：射线检测 + 枪口闪光 + 爆炸粒子 + 计分
+// 射击：射线检测 + 枪口闪光 + 爆炸粒子 + 计分 + 音效
 import * as THREE from 'three';
 import { state } from './state.js';
 import { getBalloons, removeBalloon, maintainBalloons } from './balloon.js';
 
 const raycaster = new THREE.Raycaster();
-const center = new THREE.Vector2(0, 0);   // 屏幕中心
+const center = new THREE.Vector2(0, 0);
 const particles = [];
 
 let muzzleFlash = null;
 let muzzleTimer = 0;
 const MUZZLE_DURATION = 0.06;
 
-// 枪口闪光：扁平 sprite 贴在枪口，不会穿透墙面形成半圆
+// === 音效系统 ===
+let audioCtx = null;
+let gunshotBuffer = null;
+
+// 初始化音频（必须在用户交互后调用）
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { return; }
+
+  // 加载 M1911 枪声 mp3
+  fetch('assets/gunshot-indoor.mp3')
+    .then(r => r.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => { gunshotBuffer = decoded; })
+    .catch(() => {});
+}
+
+// 播放枪声
+function playGunshot() {
+  if (!audioCtx || !gunshotBuffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = gunshotBuffer;
+  src.playbackRate.value = 0.95 + Math.random() * 0.1;  // 轻微变调
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.55;
+  src.connect(gain).connect(audioCtx.destination);
+  src.start();
+}
+
+// 合成气球破裂 pop 声
+function playPop() {
+  if (!audioCtx) return;
+  const dur = 0.08;
+  const sr = audioCtx.sampleRate;
+  const buffer = audioCtx.createBuffer(1, Math.floor(sr * dur), sr);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    const t = i / data.length;
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 900 + Math.random() * 400;
+  filter.Q.value = 2.5;
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.4;
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start();
+}
+
+// 枪口闪光：扁平 sprite 贴在枪口
 function createMuzzleFlash(camera) {
   const flash = new THREE.Mesh(
     new THREE.PlaneGeometry(0.12, 0.12),
@@ -23,7 +77,6 @@ function createMuzzleFlash(camera) {
       blending: THREE.AdditiveBlending,
     })
   );
-  // 定位在枪管口处（枪整体在 0.20,-0.18,-0.45，枪管口在枪本地 z=0.32）
   flash.position.set(0.20, -0.16, -0.13);
   flash.visible = false;
   camera.add(flash);
@@ -32,17 +85,21 @@ function createMuzzleFlash(camera) {
 
 export function initShooting(camera) {
   muzzleFlash = createMuzzleFlash(camera);
+
   document.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
     if (document.pointerLockElement !== document.body) return;
+    if (!audioCtx) initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     fire(camera);
   });
 }
 
-// 开火：射线 + 闪光 + 命中处理
+// 开火：枪声 + 射线 + 闪光 + 命中处理
 export function fire(camera) {
   if (!state.running) return;
 
+  playGunshot();
   triggerMuzzleFlash();
 
   raycaster.setFromCamera(center, camera);
@@ -51,7 +108,6 @@ export function fire(camera) {
 
   if (hits.length === 0) return;
 
-  // 向上找到属于 balloons 数组的根
   let obj = hits[0].object;
   while (obj.parent && !targets.includes(obj)) obj = obj.parent;
   if (targets.includes(obj)) {
@@ -61,11 +117,11 @@ export function fire(camera) {
 
 function onHitBalloon(balloon, hitPoint) {
   const u = balloon.userData;
-  // 半径越小分数越高（小气球更难命中）
   const points = Math.round(20 + (0.50 - u.radius) * 80);
   state.score += points;
   state.lastHitTime = performance.now();
 
+  playPop();
   spawnExplosion(hitPoint, u.color);
 
   removeBalloon(balloon);
@@ -120,7 +176,6 @@ export function updateEffects(dt) {
     const ratio = Math.max(0, muzzleTimer / MUZZLE_DURATION);
     muzzleFlash.material.opacity = ratio;
     muzzleFlash.scale.setScalar(1 + (1 - ratio) * 0.8);
-    // 让闪光始终面向相机
     muzzleFlash.lookAt(state.camera.position);
     if (muzzleTimer <= 0) muzzleFlash.visible = false;
   }
@@ -134,7 +189,7 @@ export function updateEffects(dt) {
       b.mesh.position.x += b.vel.x * dt;
       b.mesh.position.y += b.vel.y * dt;
       b.mesh.position.z += b.vel.z * dt;
-      b.vel.y -= 5 * dt;            // 重力
+      b.vel.y -= 5 * dt;
       b.mesh.rotation.x += b.spin * dt;
       b.mesh.rotation.y += b.spin * dt;
       b.mesh.material.opacity = 1 - t;

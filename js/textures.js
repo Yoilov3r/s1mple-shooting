@@ -208,6 +208,122 @@ export function makeMetalBlastTexture({
   return tex;
 }
 
+// ---------- 地面（水泥/沥青 + 裂缝 + 污渍） ----------
+export function makeGroundTexture({
+  width = 1024, height = 1024,
+  baseColor = '#8a8682',
+  crackColor = '#5a5652',
+  stainColor = '#6a6660',
+} = {}) {
+  const cv = makeCanvas(width, height);
+  const ctx = cv.getContext('2d');
+  const c0 = new THREE.Color(baseColor);
+
+  // 底色 + 噪声变化
+  ctx.fillStyle = '#' + c0.getHexString();
+  ctx.fillRect(0, 0, width, height);
+
+  // 大面积色块变化（低频噪声）
+  for (let y = 0; y < height; y += 4) {
+    for (let x = 0; x < width; x += 4) {
+      const n = smoothNoise(x * 0.006, y * 0.006, 1) - 0.5;
+      const a = Math.abs(n) * 0.18;
+      ctx.fillStyle = n > 0 ? `rgba(255,250,240,${a})` : `rgba(40,38,35,${a})`;
+      ctx.fillRect(x, y, 4, 4);
+    }
+  }
+
+  // 细碎噪点（砂石感）
+  for (let i = 0; i < 8000; i++) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const v = Math.random();
+    ctx.fillStyle = v < 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
+    ctx.fillRect(x, y, 1.5, 1.5);
+  }
+
+  // 裂缝（随机折线）
+  const c1 = new THREE.Color(crackColor);
+  ctx.strokeStyle = '#' + c1.getHexString();
+  for (let i = 0; i < 12; i++) {
+    ctx.lineWidth = 0.8 + Math.random() * 1.5;
+    ctx.beginPath();
+    let x = Math.random() * width;
+    let y = Math.random() * height;
+    ctx.moveTo(x, y);
+    const segs = 5 + Math.floor(Math.random() * 8);
+    for (let s = 0; s < segs; s++) {
+      x += (Math.random() - 0.5) * 120;
+      y += (Math.random() - 0.5) * 120;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // 污渍/水迹（径向渐变）
+  const c2 = new THREE.Color(stainColor);
+  for (let i = 0; i < 8; i++) {
+    const cx = Math.random() * width;
+    const cy = Math.random() * height;
+    const R = 30 + Math.random() * 80;
+    const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, R);
+    g.addColorStop(0, `rgba(${Math.round(c2.r*255)},${Math.round(c2.g*255)},${Math.round(c2.b*255)},0.25)`);
+    g.addColorStop(1, `rgba(${Math.round(c2.r*255)},${Math.round(c2.g*255)},${Math.round(c2.b*255)},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, R, R * 0.7, Math.random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 16;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// ---------- 天空渐变纹理 ----------
+export function makeSkyTexture({
+  width = 1024, height = 512,
+  topColor = '#4a90d9',
+  midColor = '#a8c8e8',
+  bottomColor = '#e8f0f8',
+} = {}) {
+  const cv = makeCanvas(width, height);
+  const ctx = cv.getContext('2d');
+
+  // 垂直三段渐变
+  const grad = ctx.createLinearGradient(0, 0, 0, height);
+  grad.addColorStop(0, topColor);
+  grad.addColorStop(0.5, midColor);
+  grad.addColorStop(1, bottomColor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  // 云朵（柔和椭圆）
+  for (let i = 0; i < 20; i++) {
+    const cx = Math.random() * width;
+    const cy = height * 0.2 + Math.random() * height * 0.5;
+    const rw = 40 + Math.random() * 120;
+    const rh = rw * (0.3 + Math.random() * 0.2);
+    ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.25})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 叠加 2-3 个椭圆模拟蓬松云
+    for (let j = 0; j < 3; j++) {
+      ctx.beginPath();
+      ctx.ellipse(cx + (Math.random()-0.5)*rw, cy + (Math.random()-0.5)*rh*0.5,
+        rw * (0.5 + Math.random()*0.5), rh * (0.5 + Math.random()*0.5), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 // ---------- 工具函数 ----------
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 function rgbHex(r, g, b) {
