@@ -4,6 +4,7 @@ import { state } from './state.js';
 import { createRoom, createLights } from './scene.js';
 import { initControls, updateControls } from './controls.js';
 import { attachWeapon } from './gun.js';
+import { updateBalloons } from './balloon.js';
 
 function createRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -44,7 +45,9 @@ function onResize() {
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(state.clock.getDelta(), 0.1);
+  const elapsed = state.clock.elapsedTime;
   updateControls(dt);
+  updateBalloons(elapsed);
   state.renderer.render(state.scene, state.camera);
 }
 
