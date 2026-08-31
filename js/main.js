@@ -6,6 +6,7 @@ import { initControls, updateControls } from './controls.js';
 import { attachWeapon } from './gun.js';
 import { updateBalloons } from './balloon.js';
 import { initShooting, updateEffects } from './shooting.js';
+import { initGame, updateGame } from './game.js';
 
 function createRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -50,6 +51,7 @@ function animate() {
   updateControls(dt);
   updateBalloons(elapsed);
   updateEffects(dt);
+  updateGame();
   state.renderer.render(state.scene, state.camera);
 }
 
@@ -72,6 +74,9 @@ function bootstrap() {
 
   // 控制
   initControls();
+
+  // 游戏流程（开始 / 暂停 / 结束）
+  initGame();
 
   window.addEventListener('resize', onResize);
   animate();
