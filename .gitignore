@@ -13,7 +13,9 @@ desktop.ini
 npm-debug.log*
 node_modules/
 
-# Build artifacts
+# Python build artifacts
 dist/
 build/
-*.exe
+*.spec
+__pycache__/
+*.pyc

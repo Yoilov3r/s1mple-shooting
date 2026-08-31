@@ -16,11 +16,35 @@
 - Three.js 0.160（ES Modules + importmap）
 - 原生 Pointer Lock API
 - 浏览器 WebGL
+- pywebview 6.x + WebView2（独立窗口壳）
+- PyInstaller（单 exe 打包）
 
 ## 运行
 
-直接用浏览器打开 `index.html`（需联网加载 Three.js CDN）。
-若要离线运行，可下载 `three.module.js` 到本地并修改 importmap 路径。
+### 方式 A：独立原生窗口应用（推荐，无需浏览器）
+
+双击 `dist/s1mple-shooting.exe` 即可。基于 pywebview + WebView2 内核，
+打开后是独立原生窗口，不依赖浏览器。
+
+如需重新打包：
+
+```powershell
+pip install pywebview pyinstaller
+.\build.bat
+# 或手动执行：
+pyinstaller --noconfirm --onefile --windowed --name s1mple-shooting `
+  --add-data "index.html;." --add-data "css;css" --add-data "js;js" `
+  --collect-all webview --collect-all clr_loader launcher.py
+```
+
+### 方式 B：浏览器调试
+
+```powershell
+python -m http.server 8765
+# 浏览器打开 http://localhost:8765/
+```
+
+直接打开 `index.html` 不行（ES Modules 受 CORS 限制，必须走 HTTP）。
 
 ## 文件结构
 
@@ -28,15 +52,18 @@
 s1mple-shooting/
 ├── index.html             # 入口 + HUD + 遮罩
 ├── css/style.css          # 准星 / 分数 / 倒计时 / 遮罩样式
-└── js/
-    ├── main.js            # 渲染器/场景/相机初始化 + 主循环
-    ├── state.js           # 全局共享状态
-    ├── scene.js           # 灰白超大正方体房间 + 多层光照
-    ├── controls.js        # PointerLock 视角 + WASD 移动 + 边界
-    ├── gun.js             # 精致 M1911 手枪模型 + 第一人称挂载
-    ├── balloon.js         # 气球生成系统（随机大小/位置/颜色+漂浮）
-    ├── shooting.js        # 射线检测 + 枪口闪光 + 爆炸粒子 + 计分
-    └── game.js            # 开始/暂停/结束流程 + 5 秒倒计时 UI
+├── js/
+│   ├── main.js            # 渲染器/场景/相机初始化 + 主循环
+│   ├── state.js           # 全局共享状态
+│   ├── scene.js           # 灰白超大正方体房间 + 多层光照
+│   ├── controls.js        # PointerLock 视角 + WASD 移动 + 边界
+│   ├── gun.js             # 精致 M1911 手枪模型 + 第一人称挂载
+│   ├── balloon.js         # 气球生成系统（随机大小/位置/颜色+漂浮）
+│   ├── shooting.js        # 射线检测 + 枪口闪光 + 爆炸粒子 + 计分
+│   └── game.js            # 开始/暂停/结束流程 + 5 秒倒计时 UI
+├── launcher.py            # pywebview 独立窗口启动器（内嵌 HTTP 服务）
+├── build.bat              # PyInstaller 一键打包脚本
+└── requirements.txt       # Python 依赖
 ```
 
 ## 开发过程
