@@ -1,5 +1,6 @@
 // 入口：创建渲染器、场景、相机并启动渲染循环
 import * as THREE from 'three';
+import { createRoom, createLights } from './scene.js';
 
 export const state = {
   scene: null,
@@ -57,6 +58,10 @@ function bootstrap() {
   state.camera = createCamera();
   state.renderer = createRenderer();
   state.clock = new THREE.Clock();
+
+  // 房间 + 光照
+  state.scene.add(createRoom(60));
+  state.scene.add(createLights());
 
   window.addEventListener('resize', onResize);
   animate();
