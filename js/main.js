@@ -5,6 +5,7 @@ import { createRoom, createLights } from './scene.js';
 import { initControls, updateControls } from './controls.js';
 import { attachWeapon } from './gun.js';
 import { updateBalloons } from './balloon.js';
+import { initShooting, updateEffects } from './shooting.js';
 
 function createRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -48,6 +49,7 @@ function animate() {
   const elapsed = state.clock.elapsedTime;
   updateControls(dt);
   updateBalloons(elapsed);
+  updateEffects(dt);
   state.renderer.render(state.scene, state.camera);
 }
 
@@ -64,6 +66,9 @@ function bootstrap() {
   // 相机加入场景，才能让挂在相机下的手枪被渲染
   state.scene.add(state.camera);
   attachWeapon(state.camera);
+
+  // 射击系统
+  initShooting(state.camera);
 
   // 控制
   initControls();
