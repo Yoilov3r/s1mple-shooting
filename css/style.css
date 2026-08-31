@@ -18,24 +18,35 @@ canvas { display: block; }
   position: fixed; inset: 0; pointer-events: none; z-index: 10;
 }
 
-/* 准星：圆环 + 十字线 */
+/* 准星：圆环 + 十字线 + 中心红点 */
 #crosshair {
   position: absolute; top: 50%; left: 50%;
   width: 22px; height: 22px;
   transform: translate(-50%, -50%);
   border: 2px solid rgba(255,255,255,0.92);
   border-radius: 50%;
-  box-shadow: 0 0 4px rgba(0,0,0,0.55), inset 0 0 2px rgba(0,0,0,0.6);
+  box-shadow: 0 0 4px rgba(0,0,0,0.6), inset 0 0 2px rgba(0,0,0,0.6);
 }
 #crosshair::before, #crosshair::after {
   content: ''; position: absolute; background: rgba(255,255,255,0.92);
-  box-shadow: 0 0 2px rgba(0,0,0,0.55);
+  box-shadow: 0 0 2px rgba(0,0,0,0.6);
 }
 #crosshair::before {
   top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%);
 }
 #crosshair::after {
   left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%);
+}
+/* 中心红点：增强对准感 */
+#crosshair-dot {
+  position: absolute; top: 50%; left: 50%;
+  width: 3px; height: 3px;
+  transform: translate(-50%, -50%);
+  background: #e53935;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(229,57,53,0.8);
+  pointer-events: none;
+  z-index: 11;
 }
 
 #score {
@@ -60,8 +71,8 @@ canvas { display: block; }
   to   { transform: scale(1.12); }
 }
 
-/* ===== 遮罩（开始 / 结束） ===== */
-#overlay, #gameover {
+/* ===== 统一遮罩（开始 / 暂停 / 结束） ===== */
+#overlay {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 18px;
@@ -71,11 +82,11 @@ canvas { display: block; }
   color: #f5f5f5; z-index: 100;
   backdrop-filter: blur(6px);
 }
-#overlay h1, #gameover h1 {
+#overlay h1 {
   font-size: 56px; letter-spacing: 6px; font-weight: 200;
   text-shadow: 0 0 24px rgba(255,255,255,0.15);
 }
-#overlay p, #gameover p {
+#overlay p {
   color: #bcbcbc; font-size: 16px; letter-spacing: 1px;
 }
 button {

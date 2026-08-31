@@ -14,7 +14,9 @@ const COLORS = [
 
 const MIN_RADIUS = 0.22;
 const MAX_RADIUS = 0.50;
-const SPAWN_AREA = 26;   // XZ 范围 ±26（房间半 30 留余量）
+const SPAWN_X = 26;      // X 范围 ±26（房间半 30 留余量）
+const SPAWN_Z_MIN = -26; // 气球只在 -Z 半区生成（玩家初始面向）
+const SPAWN_Z_MAX = -3;  // 靠近围栏留 3 米缓冲
 const MIN_Y = 2.2;
 const MAX_Y = 7.5;
 const TARGET_COUNT = 4;
@@ -35,9 +37,9 @@ function randomRadius() {
 
 function randomPosition() {
   return new THREE.Vector3(
-    (Math.random() * 2 - 1) * SPAWN_AREA,
+    (Math.random() * 2 - 1) * SPAWN_X,
     MIN_Y + Math.random() * (MAX_Y - MIN_Y),
-    (Math.random() * 2 - 1) * SPAWN_AREA
+    SPAWN_Z_MIN + Math.random() * (SPAWN_Z_MAX - SPAWN_Z_MIN)
   );
 }
 

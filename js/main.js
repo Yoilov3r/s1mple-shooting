@@ -21,8 +21,8 @@ function createRenderer() {
 
 function createScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xe8e6e0);
-  scene.fog = new THREE.Fog(0xe8e6e0, 35, 90);
+  scene.background = new THREE.Color(0xd9d6d0);
+  scene.fog = new THREE.Fog(0xd9d6d0, 45, 110);
   return scene;
 }
 

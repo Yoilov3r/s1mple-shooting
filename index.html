@@ -10,23 +10,16 @@
   <!-- 抬头显示：准星 / 分数 / 倒计时 -->
   <div id="hud">
     <div id="crosshair"></div>
+    <div id="crosshair-dot"></div>
     <div id="score">分数 0</div>
     <div id="timer">5.0</div>
   </div>
 
-  <!-- 开始遮罩 -->
+  <!-- 统一遮罩：开始 / 暂停 / 结束 共用 -->
   <div id="overlay">
-    <h1>s1mple shooting</h1>
-    <p>WASD 移动 · 鼠标转动视角 · 左键开火</p>
-    <p>击落空中气球得分，5 秒未命中即 Game Over</p>
+    <h1 id="overlay-title">s1mple shooting</h1>
+    <p id="overlay-subtitle">WASD 移动 · 鼠标转动视角 · 左键开火</p>
     <button id="startBtn">开始游戏</button>
-  </div>
-
-  <!-- 结束遮罩 -->
-  <div id="gameover" hidden>
-    <h1>GAME OVER</h1>
-    <p>最终分数 <span id="finalScore">0</span></p>
-    <button id="restartBtn">重新开始</button>
   </div>
 
   <!-- ES Modules + importmap 引入 Three.js -->

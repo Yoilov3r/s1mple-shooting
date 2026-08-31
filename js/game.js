@@ -1,51 +1,48 @@
-// 游戏流程：开始 / 暂停 / 继续 / 结束 + 计分与倒计时 UI
+// 游戏流程：开始 / 暂停 / 结束 — 单遮罩 + 单按钮
 import { state } from './state.js';
 import { initBalloons } from './balloon.js';
 import { requestLock } from './controls.js';
 
 const TIME_LIMIT = 5.0;
 
-const HINT1_DEFAULT = 'WASD 移动 · 鼠标转动视角 · 左键开火';
-const HINT2_DEFAULT = '击落空中气球得分，5 秒未命中即 Game Over';
-const HINT1_PAUSE  = '已暂停';
-const HINT2_PAUSE  = '5 秒倒计时已重置，点击继续按钮';
-
-let scoreEl, timerEl, overlayEl, overlayTitle, overlayHint1, overlayHint2, startBtn;
-let gameoverEl, finalScoreEl, restartBtn;
+let overlayEl, titleEl, subEl, btnEl, scoreEl, timerEl;
 let phase = 'idle';   // 'idle' | 'playing' | 'paused' | 'over'
 
 export function initGame() {
-  scoreEl       = document.getElementById('score');
-  timerEl       = document.getElementById('timer');
-  overlayEl     = document.getElementById('overlay');
-  overlayTitle  = overlayEl.querySelector('h1');
-  const ps      = overlayEl.querySelectorAll('p');
-  overlayHint1  = ps[0];
-  overlayHint2  = ps[1];
-  startBtn      = document.getElementById('startBtn');
-  gameoverEl    = document.getElementById('gameover');
-  finalScoreEl  = document.getElementById('finalScore');
-  restartBtn    = document.getElementById('restartBtn');
+  scoreEl   = document.getElementById('score');
+  timerEl   = document.getElementById('timer');
+  overlayEl = document.getElementById('overlay');
+  titleEl   = document.getElementById('overlay-title');
+  subEl     = document.getElementById('overlay-subtitle');
+  btnEl     = document.getElementById('startBtn');
 
-  startBtn.addEventListener('click', onStartClick);
-  restartBtn.addEventListener('click', onStartClick);
-
+  btnEl.addEventListener('click', onButtonClick);
   document.addEventListener('score:updated', updateScoreUI);
 
-  // 退出指针锁 = 暂停；仅在"曾经锁定→解锁"时触发，避免锁定失败误暂停
+  // 退出指针锁 = 暂停（仅锁定→解锁时触发）
   let wasLocked = false;
   document.addEventListener('pointerlockchange', () => {
     const nowLocked = document.pointerLockElement === document.body;
-    if (state.running && wasLocked && !nowLocked) {
-      pauseGame();
-    }
+    if (phase === 'playing' && wasLocked && !nowLocked) pauseGame();
     wasLocked = nowLocked;
   });
 }
 
-function onStartClick() {
-  if (phase === 'paused') resumeGame();
-  else startGame();
+// 统一显示遮罩：标题 / 副标题 / 按钮文字 一把设好
+function showOverlay(title, sub, btn) {
+  titleEl.textContent = title;
+  subEl.textContent = sub;
+  btnEl.textContent = btn;
+  overlayEl.hidden = false;
+}
+
+// 单按钮：根据当前阶段决定行为
+function onButtonClick() {
+  if (phase === 'paused') {
+    resumeGame();
+  } else {
+    startGame();
+  }
 }
 
 function startGame() {
@@ -53,16 +50,9 @@ function startGame() {
   state.lastHitTime = performance.now();
   state.running = true;
   phase = 'playing';
-
-  overlayTitle.textContent = 's1mple shooting';
-  overlayHint1.textContent = HINT1_DEFAULT;
-  overlayHint2.textContent = HINT2_DEFAULT;
-  startBtn.textContent = '开始游戏';
-
   updateScoreUI();
   initBalloons();
   overlayEl.hidden = true;
-  gameoverEl.hidden = true;
   requestLock();
 }
 
@@ -77,28 +67,20 @@ function resumeGame() {
 function pauseGame() {
   state.running = false;
   phase = 'paused';
-  overlayTitle.textContent = HINT1_PAUSE;
-  overlayHint1.textContent = HINT2_PAUSE;
-  overlayHint2.textContent = '';
-  startBtn.textContent = '继续';
-  overlayEl.hidden = false;
+  showOverlay('已暂停', '点击继续按钮恢复游戏', '继续');
 }
 
 function gameOver() {
   state.running = false;
   phase = 'over';
-  if (document.pointerLockElement === document.body) {
-    document.exitPointerLock();
-  }
-  finalScoreEl.textContent = state.score;
-  gameoverEl.hidden = false;
+  if (document.pointerLockElement === document.body) document.exitPointerLock();
+  showOverlay('GAME OVER', `最终分数 ${state.score}`, '重新开始');
 }
 
 function updateScoreUI() {
   scoreEl.textContent = `分数 ${state.score}`;
 }
 
-// 每帧倒计时检查
 export function updateGame() {
   if (!state.running) {
     timerEl.classList.remove('danger');

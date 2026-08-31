@@ -11,13 +11,21 @@ let muzzleFlash = null;
 let muzzleTimer = 0;
 const MUZZLE_DURATION = 0.06;
 
-// 枪口闪光：挂在相机手枪上的小球
+// 枪口闪光：扁平 sprite 贴在枪口，不会穿透墙面形成半圆
 function createMuzzleFlash(camera) {
   const flash = new THREE.Mesh(
-    new THREE.SphereGeometry(0.045, 10, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffcc55, transparent: true, opacity: 0 })
+    new THREE.PlaneGeometry(0.12, 0.12),
+    new THREE.MeshBasicMaterial({
+      color: 0xffcc55,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
   );
-  flash.position.set(0.20, -0.16, -0.55);
+  // 定位在枪管口处（枪整体在 0.20,-0.18,-0.45，枪管口在枪本地 z=0.32）
+  flash.position.set(0.20, -0.16, -0.13);
+  flash.visible = false;
   camera.add(flash);
   return flash;
 }
@@ -68,7 +76,9 @@ function onHitBalloon(balloon, hitPoint) {
 
 function triggerMuzzleFlash() {
   if (!muzzleFlash) return;
+  muzzleFlash.visible = true;
   muzzleFlash.material.opacity = 1.0;
+  muzzleFlash.scale.setScalar(1);
   muzzleTimer = MUZZLE_DURATION;
 }
 
@@ -107,7 +117,12 @@ function spawnExplosion(center, colorHex) {
 export function updateEffects(dt) {
   if (muzzleFlash && muzzleTimer > 0) {
     muzzleTimer -= dt;
-    muzzleFlash.material.opacity = Math.max(0, muzzleTimer / MUZZLE_DURATION);
+    const ratio = Math.max(0, muzzleTimer / MUZZLE_DURATION);
+    muzzleFlash.material.opacity = ratio;
+    muzzleFlash.scale.setScalar(1 + (1 - ratio) * 0.8);
+    // 让闪光始终面向相机
+    muzzleFlash.lookAt(state.camera.position);
+    if (muzzleTimer <= 0) muzzleFlash.visible = false;
   }
 
   for (let i = particles.length - 1; i >= 0; i--) {
