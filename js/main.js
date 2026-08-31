@@ -1,15 +1,8 @@
 // 入口：创建渲染器、场景、相机并启动渲染循环
 import * as THREE from 'three';
+import { state } from './state.js';
 import { createRoom, createLights } from './scene.js';
-
-export const state = {
-  scene: null,
-  camera: null,
-  renderer: null,
-  clock: null,
-  score: 0,
-  running: false,
-};
+import { initControls, updateControls } from './controls.js';
 
 function createRenderer() {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -49,7 +42,8 @@ function onResize() {
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = state.clock.getDelta();
+  const dt = Math.min(state.clock.getDelta(), 0.1);
+  updateControls(dt);
   state.renderer.render(state.scene, state.camera);
 }
 
@@ -62,6 +56,9 @@ function bootstrap() {
   // 房间 + 光照
   state.scene.add(createRoom(60));
   state.scene.add(createLights());
+
+  // 控制
+  initControls();
 
   window.addEventListener('resize', onResize);
   animate();
