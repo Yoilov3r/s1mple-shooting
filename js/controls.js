@@ -34,6 +34,16 @@ export function getYaw() {
   return yaw;
 }
 
+// 重置相机旋转和位置到初始状态
+export function resetCamera() {
+  yaw = 0;
+  pitch = 0;
+  euler.set(pitch, yaw, 0, 'YXZ');
+  state.camera.quaternion.setFromEuler(euler);
+  // 初始位置：围栏 +Z 侧 8 米，Y 1.7 米
+  state.camera.position.set(0, 1.7, 8);
+}
+
 function onKeyDown(e) {
   switch (e.code) {
     case 'KeyW': keys.w = true; break;
@@ -91,6 +101,13 @@ export function updateControls(dt) {
   const p = state.camera.position;
   p.x = Math.max(-ROOM_HALF, Math.min(ROOM_HALF, p.x));
   p.z = Math.max(-ROOM_HALF, Math.min(ROOM_HALF, p.z));
+  // 围栏阻挡：玩家不能穿过 z=0 附近的围栏区域
+  const FENCE_Z = 0;
+  const FENCE_BLOCK = 0.5; // 围栏半厚度
+  if (p.z > FENCE_Z - FENCE_BLOCK && p.z < FENCE_Z + FENCE_BLOCK) {
+    // 推回到玩家原来的一侧（+Z 侧）
+    p.z = FENCE_Z + FENCE_BLOCK;
+  }
   // Y 保持站立高度
   p.y = 1.7;
 }

@@ -106,12 +106,20 @@ export function fire(camera) {
   const targets = getBalloons();
   const hits = raycaster.intersectObjects(targets, true);
 
-  if (hits.length === 0) return;
+  let hitBalloon = false;
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !targets.includes(obj)) obj = obj.parent;
+    if (targets.includes(obj)) {
+      onHitBalloon(obj, hits[0].point);
+      hitBalloon = true;
+    }
+  }
 
-  let obj = hits[0].object;
-  while (obj.parent && !targets.includes(obj)) obj = obj.parent;
-  if (targets.includes(obj)) {
-    onHitBalloon(obj, hits[0].point);
+  // 挑战模式：空枪扣 10 分
+  if (!hitBalloon && state.mode === 'challenge') {
+    state.score = Math.max(0, state.score - 10);
+    document.dispatchEvent(new CustomEvent('score:updated', { detail: state.score }));
   }
 }
 
