@@ -9,9 +9,9 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
-  color: #eee;
-  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: #0e121e;
+  color: #c8d0e0;
+  font-family: 'Segoe UI', 'Microsoft YaHei', -apple-system, sans-serif;
   cursor: default;
   user-select: none;
 }
@@ -20,7 +20,7 @@ canvas {
   display: block;
 }
 
-/* ==================== HUD ==================== */
+/* ==================== HUD — Aim Rush 风格 ==================== */
 #hud {
   position: fixed;
   inset: 0;
@@ -35,30 +35,30 @@ canvas {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 #crosshair::before,
 #crosshair::after {
   content: '';
   position: absolute;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 212, 255, 0.8);
 }
 
 #crosshair::before {
   top: 50%;
-  left: 0;
-  width: 100%;
+  left: 2px;
+  width: 20px;
   height: 1.5px;
   transform: translateY(-50%);
 }
 
 #crosshair::after {
   left: 50%;
-  top: 0;
+  top: 2px;
   width: 1.5px;
-  height: 100%;
+  height: 20px;
   transform: translateX(-50%);
 }
 
@@ -67,56 +67,64 @@ canvas {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
+  width: 2px;
+  height: 2px;
   border-radius: 50%;
   background: #ff4444;
-  box-shadow: 0 0 6px #ff4444;
+  box-shadow: 0 0 8px #ff4444;
 }
 
 #mode-indicator {
   position: absolute;
-  top: 16px;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 1px;
-  text-shadow: 0 0 8px rgba(0,0,0,0.7);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(0,0,0,0.8);
+  opacity: 0.6;
   pointer-events: none;
 }
 
 #score {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  font-size: 18px;
-  font-weight: 600;
-  text-shadow: 0 0 8px rgba(0,0,0,0.7);
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(0,0,0,0.8);
+  font-variant-numeric: tabular-nums;
 }
 
 #timer {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  font-size: 28px;
-  font-weight: 700;
+  top: 20px;
+  right: 24px;
+  font-size: 24px;
+  font-weight: 300;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 8px rgba(0,0,0,0.7);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(0,0,0,0.8);
   transition: color 0.2s;
+  opacity: 0.7;
 }
 
 #timer.danger {
   color: #ff4444;
+  opacity: 1;
   animation: pulse 0.5s ease-in-out infinite alternate;
 }
 
 @keyframes pulse {
   from { opacity: 1; transform: scale(1); }
-  to   { opacity: 0.6; transform: scale(1.15); }
+  to   { opacity: 0.6; transform: scale(1.1); }
 }
 
-/* ==================== 大厅 ==================== */
+/* ==================== 大厅 — Aim Rush 暗色主题 ==================== */
 #lobby {
   position: fixed;
   inset: 0;
@@ -124,47 +132,49 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(14, 18, 30, 0.92);
 }
 
 #lobby[hidden] { display: none !important; }
 
 .lobby-card {
-  background: rgba(20, 22, 28, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 48px 40px 36px;
+  background: rgba(18, 22, 36, 0.95);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 12px;
+  padding: 44px 40px 32px;
   min-width: 480px;
   max-width: 520px;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 0 60px rgba(0, 212, 255, 0.04), 0 20px 60px rgba(0,0,0,0.5);
 }
 
 .lobby-title {
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin-bottom: 6px;
-  background: linear-gradient(135deg, #4fc3f7, #81c784);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  color: #e8ecf4;
+}
+
+.lobby-title span {
+  color: #00d4ff;
+  font-weight: 600;
 }
 
 .lobby-subtitle {
-  font-size: 13px;
-  color: rgba(255,255,255,0.4);
-  margin-bottom: 32px;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 36px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 /* 模式按钮 */
 .mode-buttons {
   display: flex;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 36px;
 }
 
 .mode-btn {
@@ -172,21 +182,21 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 20px 12px 16px;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  background: rgba(255,255,255,0.04);
-  color: #ccc;
+  gap: 8px;
+  padding: 24px 16px 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  color: #8892a8;
   cursor: pointer;
   transition: all 0.25s;
   font-family: inherit;
 }
 
 .mode-btn:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
-  transform: translateY(-2px);
+  background: rgba(0, 212, 255, 0.04);
+  border-color: rgba(0, 212, 255, 0.2);
+  transform: translateY(-1px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
 
@@ -195,51 +205,57 @@ canvas {
 }
 
 .mode-icon {
-  font-size: 20px;
-  font-weight: 800;
-  width: 44px;
-  height: 44px;
-  line-height: 44px;
+  font-size: 16px;
+  font-weight: 700;
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
   border-radius: 50%;
   margin-bottom: 4px;
   color: #fff;
   font-family: 'Courier New', monospace;
+  letter-spacing: 0;
 }
 
 .mode-btn[data-mode="training"] .mode-icon {
-  background: linear-gradient(135deg, #4fc3f7, #0288d1);
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.2);
 }
 
 .mode-btn[data-mode="challenge"] .mode-icon {
-  background: linear-gradient(135deg, #ff6b35, #d32f2f);
+  background: rgba(255, 107, 53, 0.15);
+  color: #ff6b35;
+  border: 1px solid rgba(255, 107, 53, 0.2);
 }
 
 .mode-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #eee;
+  font-size: 14px;
+  font-weight: 500;
+  color: #d0d8e8;
+  letter-spacing: 1px;
 }
 
 .mode-desc {
   font-size: 11px;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.25);
   line-height: 1.4;
 }
 
 /* 排行榜 */
 #leaderboard {
   text-align: left;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding-top: 20px;
 }
 
 #leaderboard h2 {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(255,255,255,0.35);
-  letter-spacing: 2px;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 3px;
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   text-align: center;
 }
 
@@ -247,40 +263,42 @@ canvas {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  background: rgba(255,215,0,0.08);
-  border: 1px solid rgba(255,215,0,0.15);
-  border-radius: 8px;
-  margin-bottom: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.08);
+  border-radius: 6px;
+  margin-bottom: 10px;
 }
 
 .lb-label {
-  font-size: 13px;
-  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1px;
 }
 
 .lb-best .lb-value {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   color: #ffd700;
+  letter-spacing: 0;
 }
 
 .lb-recent-header {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   padding: 0 16px;
 }
 
 .lb-recent-header .lb-label {
-  font-size: 12px;
-  color: rgba(255,255,255,0.3);
+  font-size: 11px;
+  color: rgba(255,255,255,0.15);
 }
 
 .lb-recent-list {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   padding: 0 16px;
   flex-wrap: wrap;
-  min-height: 32px;
+  min-height: 28px;
   align-items: center;
 }
 
@@ -288,21 +306,21 @@ canvas {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  height: 28px;
-  padding: 0 10px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.7);
+  min-width: 32px;
+  height: 24px;
+  padding: 0 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.4);
   font-variant-numeric: tabular-nums;
 }
 
 .lb-empty {
-  font-size: 12px;
-  color: rgba(255,255,255,0.2);
+  font-size: 11px;
+  color: rgba(255,255,255,0.12);
   font-style: italic;
 }
 
@@ -315,42 +333,45 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(14, 18, 30, 0.85);
 }
 
 #overlay[hidden] { display: none !important; }
 
 #overlay h1 {
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: 4px;
   margin-bottom: 8px;
-  letter-spacing: 2px;
+  color: #e8ecf4;
 }
 
 #overlay p {
-  font-size: 15px;
-  color: rgba(255,255,255,0.5);
-  margin-bottom: 28px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 32px;
+  letter-spacing: 1px;
 }
 
 #overlay-btn {
   padding: 12px 48px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #4fc3f7, #0288d1);
-  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(0, 212, 255, 0.06);
+  color: #00d4ff;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 #overlay-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79, 195, 247, 0.3);
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.08);
 }
 
 #overlay-btn:active {

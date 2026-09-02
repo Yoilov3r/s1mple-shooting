@@ -1,64 +1,78 @@
-// 场景内容：砖瓦围墙 + 水泥地面 + 天空穹顶 + 围栏 + 多层光照
+// 场景内容：深色灰砖围墙 + 暗色地面 + 霓虹灯光（Aim Rush 风格）
 import * as THREE from 'three';
-import { makeBrickTexture, makeGroundTexture, makeSkyTexture, makeBrickNormalTexture } from './textures.js';
+import { makeBrickTexture, makeGroundTexture, makeBrickNormalTexture } from './textures.js';
 
-function makeWallMaterial(texture, normalMap, repeatX, repeatY, color = 0xe5e2dc) {
+function makeWallMaterial(texture, normalMap, repeatX, repeatY, color = 0x2a2e3a) {
   const tex = texture.clone();
   tex.repeat.set(repeatX, repeatY);
   tex.needsUpdate = true;
   return new THREE.MeshStandardMaterial({
     map: tex,
     normalMap: normalMap,
-    normalScale: new THREE.Vector2(0.6, 0.6),
+    normalScale: new THREE.Vector2(0.8, 0.8),
     color: color,
-    roughness: 0.85,
-    metalness: 0.0,
+    roughness: 0.7,
+    metalness: 0.1,
   });
 }
 
-// 构建场景：三面砖墙 + 地面 + 天空穹顶（无顶面）
+// 构建场景：四面深色砖墙 + 暗色地面 + 霓虹氛围
 export function createRoom(size = 60) {
   const group = new THREE.Group();
   const half = size / 2;
   const wallH = size;
 
-  // 砖瓦纹理（含法线贴图）
+  // 深色砖瓦纹理
   const brickTex = makeBrickTexture({
     width: 1024, height: 1024,
     rows: 14, cols: 8,
-    baseColor: '#e5e2dc',
-    mortarColor: '#8a8782',
-    darkShift: 28,
-    contrast: 1.15,
+    baseColor: '#2a2e3a',
+    mortarColor: '#1a1e28',
+    darkShift: 15,
+    contrast: 1.5,
   });
   const brickNormal = makeBrickNormalTexture({ width: 1024, height: 1024 });
 
   const geo = new THREE.PlaneGeometry(size, size, 1, 1);
 
-  const matX = makeWallMaterial(brickTex, brickNormal, 4, 3);
-  const matZ = makeWallMaterial(brickTex, brickNormal, 4, 3, 0xdedcd6);
+  const matX = makeWallMaterial(brickTex, brickNormal, 4, 3, 0x2a2e3a);
+  const matZ = makeWallMaterial(brickTex, brickNormal, 4, 3, 0x262a36);
 
-  // --- 地面：水泥纹理 ---
+  // --- 地面：深色水泥纹理 ---
   const groundTex = makeGroundTexture({
     width: 1024, height: 1024,
-    baseColor: '#9a9690',
-    crackColor: '#6a6660',
-    stainColor: '#7a766e',
+    baseColor: '#0d0f14',
+    crackColor: '#1a1c22',
+    stainColor: '#12141a',
   });
   const matGround = new THREE.MeshStandardMaterial({
     map: groundTex,
-    color: 0x96928c,
-    roughness: 0.85,
-    metalness: 0.05,
+    color: 0x0d0f14,
+    roughness: 0.75,
+    metalness: 0.2,
   });
 
-  // --- 天空穹顶：大球体内侧贴天空渐变 ---
-  const skyTex = makeSkyTexture({
-    width: 2048, height: 1024,
-    topColor: '#3a7bc8',
-    midColor: '#a0c4e8',
-    bottomColor: '#dcecf5',
-  });
+  // --- 天空穹顶：深色渐变 ---
+  const skyCanvas = document.createElement('canvas');
+  skyCanvas.width = 1024; skyCanvas.height = 512;
+  const ctx = skyCanvas.getContext('2d');
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, 512);
+  skyGrad.addColorStop(0, '#0a0c14');
+  skyGrad.addColorStop(0.4, '#0e121e');
+  skyGrad.addColorStop(0.7, '#121828');
+  skyGrad.addColorStop(0.9, '#1a1e2e');
+  skyGrad.addColorStop(1, '#1e2230');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, 1024, 512);
+  // 星星
+  for (let i = 0; i < 120; i++) {
+    const sx = Math.random() * 1024;
+    const sy = Math.random() * 256;
+    const br = 100 + Math.random() * 155;
+    ctx.fillStyle = `rgb(${br},${br},${br})`;
+    ctx.fillRect(sx, sy, 1 + Math.random() * 0.5, 1 + Math.random() * 0.5);
+  }
+  const skyTex = new THREE.CanvasTexture(skyCanvas);
   const skyGeo = new THREE.SphereGeometry(half * 2.5, 32, 16);
   const skyMat = new THREE.MeshBasicMaterial({
     map: skyTex,
@@ -67,21 +81,6 @@ export function createRoom(size = 60) {
   });
   const sky = new THREE.Mesh(skyGeo, skyMat);
   group.add(sky);
-
-  // 太阳光晕（天空中的发光球体）
-  const sunGlow = new THREE.Mesh(
-    new THREE.SphereGeometry(2, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xfff5e0, transparent: true, opacity: 0.3 })
-  );
-  sunGlow.position.set(25, 50, -20);
-  group.add(sunGlow);
-
-  const sunCore = new THREE.Mesh(
-    new THREE.SphereGeometry(0.8, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xfff8ee, transparent: true, opacity: 0.6 })
-  );
-  sunCore.position.copy(sunGlow.position);
-  group.add(sunCore);
 
   // --- 四面墙 ---
   const walls = [
@@ -106,22 +105,51 @@ export function createRoom(size = 60) {
   floor.receiveShadow = true;
   group.add(floor);
 
-  // --- 墙顶边沿装饰：砖墙顶部一条深色檐线 ---
-  const capMat = new THREE.MeshStandardMaterial({
-    color: 0x6a6660, roughness: 0.85, metalness: 0.1,
+  // --- 地面发光网格线（Aim Rush 标志性元素） ---
+  const gridMat = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    transparent: true,
+    opacity: 0.08,
+    wireframe: false,
+    depthWrite: false,
   });
-  const capGeo = new THREE.BoxGeometry(size, 0.3, 0.4);
-  for (const w of walls) {
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.set(w.pos[0], wallH, w.pos[2]);
-    cap.castShadow = true;
-    cap.receiveShadow = true;
-    group.add(cap);
+  const gridGeo = new THREE.PlaneGeometry(size - 4, size - 4, 30, 30);
+  const grid = new THREE.Mesh(gridGeo, gridMat);
+  grid.rotation.set(-Math.PI / 2, 0, 0);
+  grid.position.set(0, 0.02, 0);
+  group.add(grid);
+
+  // 网格线条（发光边框线）
+  const lineMat = new THREE.LineBasicMaterial({
+    color: 0x00d4ff,
+    transparent: true,
+    opacity: 0.15,
+  });
+  for (let i = -14; i <= 14; i++) {
+    const pts = [new THREE.Vector3(i * 2, 0.01, -28), new THREE.Vector3(i * 2, 0.01, 28)];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    group.add(new THREE.Line(lineGeo, lineMat));
+    const pts2 = [new THREE.Vector3(-28, 0.01, i * 2), new THREE.Vector3(28, 0.01, i * 2)];
+    const lineGeo2 = new THREE.BufferGeometry().setFromPoints(pts2);
+    group.add(new THREE.Line(lineGeo2, lineMat));
   }
 
-  // --- 墙角装饰柱（让空间更有立体感） ---
+  // --- 墙顶装饰灯带（霓虹光带） ---
+  const stripMat = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    transparent: true,
+    opacity: 0.12,
+  });
+  const stripGeo = new THREE.BoxGeometry(size, 0.08, 0.3);
+  for (const w of walls) {
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.position.set(w.pos[0], wallH - 0.1, w.pos[2]);
+    group.add(strip);
+  }
+
+  // --- 墙角装饰柱（深色，加强建筑感） ---
   const pillarMat = new THREE.MeshStandardMaterial({
-    color: 0x7a7772, roughness: 0.8, metalness: 0.0,
+    color: 0x1a1e28, roughness: 0.6, metalness: 0.3,
   });
   const pillarPositions = [
     [ half, 0,  half], [ half, 0, -half],
@@ -137,9 +165,9 @@ export function createRoom(size = 60) {
     group.add(pillar);
   }
 
-  // --- 地面墙脚踢脚线 ---
+  // --- 地面墙脚踢脚线（发光） ---
   const baseMat = new THREE.MeshStandardMaterial({
-    color: 0x5a5652, roughness: 0.7, metalness: 0.1,
+    color: 0x1a1e28, roughness: 0.5, metalness: 0.3,
   });
   for (const w of walls) {
     const base = new THREE.Mesh(
@@ -157,21 +185,21 @@ export function createRoom(size = 60) {
   return group;
 }
 
-// 围栏：金属立柱 + 横杆，z=0 处横跨 X 轴
+// 围栏：金属立柱 + 横杆（深色，z=0 处横跨 X 轴）
 function createFence(roomSize) {
   const fence = new THREE.Group();
   const half = roomSize / 2;
 
   const matRail = new THREE.MeshStandardMaterial({
-    color: 0x4a4d52, roughness: 0.35, metalness: 0.85,
+    color: 0x3a3e48, roughness: 0.3, metalness: 0.9,
   });
   const matPost = new THREE.MeshStandardMaterial({
-    color: 0x3a3d42, roughness: 0.4, metalness: 0.8,
+    color: 0x2a2e38, roughness: 0.35, metalness: 0.85,
   });
 
   const postH = 1.2;
-  const postR = 0.05;
-  const railR = 0.03;
+  const postR = 0.04;
+  const railR = 0.025;
   const railY1 = 0.5;
   const railY2 = 1.0;
 
@@ -207,7 +235,7 @@ function createFence(roomSize) {
 
   const spacing = 0.5;
   const decoMat = new THREE.MeshStandardMaterial({
-    color: 0x55585e, roughness: 0.35, metalness: 0.8,
+    color: 0x3a3e48, roughness: 0.3, metalness: 0.85,
   });
   for (let i = 0; i < postCount - 1; i++) {
     const x0 = startX + i * 5;
@@ -225,16 +253,16 @@ function createFence(roomSize) {
   return fence;
 }
 
-// 多层光照：天光 + 主光（太阳）+ 暖色补光 + 半球光
+// 多层光照：暗色环境 + 冷色主光 + 暖色对比 + 霓虹氛围
 export function createLights() {
   const group = new THREE.Group();
 
-  // 环境光
-  group.add(new THREE.AmbientLight(0xb8d4f0, 0.45));
+  // 环境光（极暗）
+  group.add(new THREE.AmbientLight(0x202436, 0.35));
 
-  // 主光：太阳，从天空方向斜射
-  const key = new THREE.DirectionalLight(0xfff8e8, 1.4);
-  key.position.set(15, 40, -10);
+  // 冷色主光（来自上方，偏蓝）
+  const key = new THREE.DirectionalLight(0x88bbff, 0.8);
+  key.position.set(10, 30, -8);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.left = -32;
@@ -247,17 +275,17 @@ export function createLights() {
   key.shadow.normalBias = 0.02;
   group.add(key);
 
-  // 暖色补光：从对角方向软化阴影
-  const fill = new THREE.DirectionalLight(0xfff1e0, 0.35);
-  fill.position.set(-12, 8, 10);
+  // 暖色补光（从对角，产生对比感）
+  const fill = new THREE.DirectionalLight(0xff8844, 0.3);
+  fill.position.set(-8, 6, 10);
   group.add(fill);
 
-  // 半球光：天空蓝 → 地面暖色过渡
-  group.add(new THREE.HemisphereLight(0x88bbff, 0x96928c, 0.5));
+  // 半球光（暗冷色）
+  group.add(new THREE.HemisphereLight(0x4466aa, 0x222244, 0.35));
 
-  // 围栏侧聚光
-  const accent = new THREE.SpotLight(0xfff5e8, 0.4, 40, Math.PI / 6, 0.5, 1.2);
-  accent.position.set(0, 15, 0);
+  // 围栏区域的霓虹背光
+  const accent = new THREE.SpotLight(0x00d4ff, 0.3, 30, Math.PI / 4, 0.5, 1.5);
+  accent.position.set(0, 12, 8);
   accent.target.position.set(0, 0, 0);
   group.add(accent);
   group.add(accent.target);

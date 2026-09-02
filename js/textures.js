@@ -28,15 +28,14 @@ function smoothNoise(x, y, seed) {
   return a * (1 - sx) * (1 - sy) + b * sx * (1 - sy) + c * (1 - sx) * sy + d * sx * sy;
 }
 
-// ---------- 砖瓦（墙体） ----------
-// lightTint 控制整体灰调，contrast 控制灰缝 vs 砖面色差
+// ---------- 砖瓦（墙体）— 深色 Aim Rush 风格 ----------
 export function makeBrickTexture({
   width = 1024, height = 1024,
   rows = 16, cols = 10,
-  baseColor = '#e5e2dc',
-  mortarColor = '#7a7772',
-  darkShift = 22,
-  contrast = 1.0,
+  baseColor = '#2a2e3a',
+  mortarColor = '#1a1e28',
+  darkShift = 15,
+  contrast = 1.5,
 } = {}) {
   const cv = makeCanvas(width, height);
   const ctx = cv.getContext('2d');
@@ -256,12 +255,12 @@ export function makeMetalBlastTexture({
   return tex;
 }
 
-// ---------- 地面（水泥/沥青 + 裂缝 + 污渍） ----------
+// ---------- 地面（深色水泥/沥青 + 裂缝 + 污渍）— Aim Rush 风格 ----------
 export function makeGroundTexture({
   width = 1024, height = 1024,
-  baseColor = '#8a8682',
-  crackColor = '#5a5652',
-  stainColor = '#6a6660',
+  baseColor = '#0d0f14',
+  crackColor = '#1a1c22',
+  stainColor = '#12141a',
 } = {}) {
   const cv = makeCanvas(width, height);
   const ctx = cv.getContext('2d');
