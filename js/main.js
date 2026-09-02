@@ -6,15 +6,22 @@ import { initControls, updateControls } from './controls.js';
 import { attachWeapon } from './gun.js';
 import { updateBalloons } from './balloon.js';
 import { initShooting, updateEffects } from './shooting.js';
+import { initDustParticles, updateDustParticles } from './particles.js';
 import { initGame, updateGame } from './game.js';
 
 function createRenderer() {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    powerPreference: 'high-performance',
+  });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   document.body.appendChild(renderer.domElement);
   return renderer;
 }
@@ -33,7 +40,7 @@ function createCamera() {
     0.1,
     200
   );
-  camera.position.set(0, 1.7, 0);
+  camera.position.set(0, 1.7, 8);
   return camera;
 }
 
@@ -50,6 +57,7 @@ function animate() {
   const elapsed = state.clock.elapsedTime;
   updateControls(dt);
   updateBalloons(elapsed);
+  updateDustParticles(dt);
   updateEffects(dt);
   updateGame();
   state.renderer.render(state.scene, state.camera);
@@ -74,6 +82,9 @@ function bootstrap() {
 
   // 控制
   initControls();
+
+  // 环境尘埃粒子
+  initDustParticles();
 
   // 游戏流程（开始 / 暂停 / 结束）
   initGame();

@@ -106,6 +106,54 @@ export function makeBrickTexture({
 // 处理拼错的 mortor 别名
 function mortorColor(c) { return c; }
 
+// ---------- 砖墙法线贴图（程序化凹凸感） ----------
+export function makeBrickNormalTexture({
+  width = 1024, height = 1024,
+  rows = 14, cols = 8,
+  strength = 0.5,
+} = {}) {
+  const cv = makeCanvas(width, height);
+  const ctx = cv.getContext('2d');
+  const tileW = width / cols;
+  const tileH = height / rows;
+  const mortarT = Math.max(1, Math.floor(tileH * 0.08));
+
+  // 填充灰色（法线 128,128,255 = 平坦）
+  ctx.fillStyle = 'rgb(128,128,255)';
+  ctx.fillRect(0, 0, width, height);
+
+  for (let r = 0; r < rows; r++) {
+    const y = r * tileH;
+    const offset = (r & 1) ? tileW * 0.5 : 0;
+    for (let c = 0; c < cols + 1; c++) {
+      const x = c * tileW + offset;
+      // 砖块内部：轻微随机法线偏移（表面不平）
+      const rn = 128 + (noise2(r * 3.1, c * 7.3, 11) - 0.5) * 40 * strength;
+      const gn = 128 + (noise2(r * 5.7, c * 2.3, 17) - 0.5) * 40 * strength;
+      ctx.fillStyle = `rgb(${Math.round(rn)},${Math.round(gn)},255)`;
+      ctx.fillRect(x + mortarT, y + mortarT, tileW - mortarT * 2, tileH - mortarT * 2);
+    }
+  }
+
+  // 灰缝区域：法线偏角（凹陷感）
+  ctx.fillStyle = 'rgb(100,100,200)';
+  for (let r = 0; r < rows; r++) {
+    const y = r * tileH;
+    const offset = (r & 1) ? tileW * 0.5 : 0;
+    for (let c = 0; c < cols + 1; c++) {
+      const x = c * tileW + offset;
+      ctx.fillRect(x + mortarT, y, tileW - mortarT * 2, mortarT);
+      ctx.fillRect(x, y + mortarT, mortarT, tileH - mortarT * 2);
+      ctx.fillRect(x + tileW - mortarT, y + mortarT, mortarT, tileH - mortarT * 2);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
 // ---------- 木地板/木质握把 ----------
 export function makeWoodTexture({
   width = 512, height = 512,
@@ -295,26 +343,46 @@ export function makeSkyTexture({
   // 垂直三段渐变
   const grad = ctx.createLinearGradient(0, 0, 0, height);
   grad.addColorStop(0, topColor);
-  grad.addColorStop(0.5, midColor);
+  grad.addColorStop(0.35, '#5a9ad9');
+  grad.addColorStop(0.55, midColor);
+  grad.addColorStop(0.8, '#c8dce8');
   grad.addColorStop(1, bottomColor);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
 
+  // 近地平线暖色带
+  const horizonGrad = ctx.createLinearGradient(0, height * 0.75, 0, height);
+  horizonGrad.addColorStop(0, 'rgba(255,248,240,0)');
+  horizonGrad.addColorStop(1, 'rgba(255,240,220,0.3)');
+  ctx.fillStyle = horizonGrad;
+  ctx.fillRect(0, 0, width, height);
+
   // 云朵（柔和椭圆）
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 30; i++) {
     const cx = Math.random() * width;
-    const cy = height * 0.2 + Math.random() * height * 0.5;
-    const rw = 40 + Math.random() * 120;
-    const rh = rw * (0.3 + Math.random() * 0.2);
+    // 云主要在中间偏上区域
+    const cy = height * 0.1 + Math.random() * height * 0.55;
+    const rw = 30 + Math.random() * 140;
+    const rh = rw * (0.25 + Math.random() * 0.25);
+    // 层云（底部较暗层）
+    ctx.fillStyle = `rgba(255,255,255,${0.08 + Math.random() * 0.12})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + rh * 0.3, rw * 1.2, rh * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 主云层
     ctx.fillStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.25})`;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2);
     ctx.fill();
-    // 叠加 2-3 个椭圆模拟蓬松云
-    for (let j = 0; j < 3; j++) {
+    // 叠加 2-4 个椭圆模拟蓬松云
+    const subClouds = 2 + Math.floor(Math.random() * 3);
+    for (let j = 0; j < subClouds; j++) {
+      const ox = (Math.random() - 0.5) * rw * 0.8;
+      const oy = (Math.random() - 0.5) * rh * 0.6;
+      const sr = 0.4 + Math.random() * 0.7;
+      ctx.fillStyle = `rgba(255,255,255,${0.12 + Math.random() * 0.18})`;
       ctx.beginPath();
-      ctx.ellipse(cx + (Math.random()-0.5)*rw, cy + (Math.random()-0.5)*rh*0.5,
-        rw * (0.5 + Math.random()*0.5), rh * (0.5 + Math.random()*0.5), 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + ox, cy + oy, rw * sr, rh * sr, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }

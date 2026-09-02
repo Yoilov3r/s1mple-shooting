@@ -9,7 +9,7 @@ const particles = [];
 
 let muzzleFlash = null;
 let muzzleTimer = 0;
-const MUZZLE_DURATION = 0.06;
+const MUZZLE_DURATION = 0.08;
 
 // === 音效系统 ===
 let audioCtx = null;
@@ -65,22 +65,48 @@ function playPop() {
   src.start();
 }
 
-// 枪口闪光：扁平 sprite 贴在枪口
+// 枪口闪光：多同心圆大小渐变+颜色渐变，更真实
 function createMuzzleFlash(camera) {
-  const flash = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.12, 0.12),
+  const group = new THREE.Group();
+  group.position.set(0.20, -0.16, -0.13);
+  group.visible = false;
+
+  const outer = new THREE.Mesh(
+    new THREE.CircleGeometry(0.10, 16),
     new THREE.MeshBasicMaterial({
-      color: 0xffcc55,
+      color: 0xffeeaa,
       transparent: true,
-      opacity: 0,
+      opacity: 0.8,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     })
   );
-  flash.position.set(0.20, -0.16, -0.13);
-  flash.visible = false;
-  camera.add(flash);
-  return flash;
+  const mid = new THREE.Mesh(
+    new THREE.CircleGeometry(0.07, 16),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffcc,
+      transparent: true,
+      opacity: 0.9,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  const inner = new THREE.Mesh(
+    new THREE.CircleGeometry(0.04, 12),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 1.0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+
+  group.add(outer);
+  group.add(mid);
+  group.add(inner);
+  camera.add(group);
+  return { group, outer, mid, inner };
 }
 
 export function initShooting(camera) {
@@ -140,9 +166,13 @@ function onHitBalloon(balloon, hitPoint) {
 
 function triggerMuzzleFlash() {
   if (!muzzleFlash) return;
-  muzzleFlash.visible = true;
-  muzzleFlash.material.opacity = 1.0;
-  muzzleFlash.scale.setScalar(1);
+  muzzleFlash.group.visible = true;
+  muzzleFlash.outer.material.opacity = 0.8;
+  muzzleFlash.mid.material.opacity = 0.9;
+  muzzleFlash.inner.material.opacity = 1.0;
+  muzzleFlash.outer.scale.setScalar(1);
+  muzzleFlash.mid.scale.setScalar(1);
+  muzzleFlash.inner.scale.setScalar(1);
   muzzleTimer = MUZZLE_DURATION;
 }
 
@@ -182,10 +212,16 @@ export function updateEffects(dt) {
   if (muzzleFlash && muzzleTimer > 0) {
     muzzleTimer -= dt;
     const ratio = Math.max(0, muzzleTimer / MUZZLE_DURATION);
-    muzzleFlash.material.opacity = ratio;
-    muzzleFlash.scale.setScalar(1 + (1 - ratio) * 0.8);
-    muzzleFlash.lookAt(state.camera.position);
-    if (muzzleTimer <= 0) muzzleFlash.visible = false;
+    const expand = (1 - ratio) * 1.2;
+
+    muzzleFlash.outer.material.opacity = 0.8 * ratio;
+    muzzleFlash.mid.material.opacity = 0.9 * ratio;
+    muzzleFlash.inner.material.opacity = 1.0 * ratio;
+    muzzleFlash.outer.scale.setScalar(1 + expand * 0.8);
+    muzzleFlash.mid.scale.setScalar(1 + expand * 0.5);
+    muzzleFlash.inner.scale.setScalar(1 + expand * 0.2);
+    muzzleFlash.group.lookAt(state.camera.position);
+    if (muzzleTimer <= 0) muzzleFlash.group.visible = false;
   }
 
   for (let i = particles.length - 1; i >= 0; i--) {
