@@ -391,6 +391,140 @@ export function makeSkyTexture({
   return tex;
 }
 
+// ---------- 现代墙面面板（深灰色哑光面板 + 浅色接缝）----------
+export function makePanelTexture({
+  width = 1024, height = 1024,
+  baseColor = '#1c202e',
+  seamColor = '#12161f',
+  grainStrength = 0.08,
+} = {}) {
+  const cv = makeCanvas(width, height);
+  const ctx = cv.getContext('2d');
+  const c0 = new THREE.Color(baseColor);
+
+  // 底色
+  ctx.fillStyle = '#' + c0.getHexString();
+  ctx.fillRect(0, 0, width, height);
+
+  // 面板分割：横向 3 块，纵向 2 块
+  const cols = 3;
+  const rows = 2;
+  const tileW = width / cols;
+  const tileH = height / rows;
+  const seam = 1.5;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = c * tileW;
+      const y = r * tileH;
+      // 面板内细微噪点变化
+      const jitter = 128 + (noise2(r * 7, c * 11, 3) - 0.5) * 30;
+      ctx.fillStyle = `rgb(${jitter},${jitter+2},${jitter+8})`;
+      ctx.fillRect(x + seam, y + seam, tileW - seam * 2, tileH - seam * 2);
+
+      // 面板内细微灰度变化（低频）
+      for (let sy = 0; sy < tileH - seam * 2; sy += 8) {
+        for (let sx = 0; sx < tileW - seam * 2; sx += 8) {
+          const n = smoothNoise((x + sx) * 0.008, (y + sy) * 0.008, 5) - 0.5;
+          const a = Math.abs(n) * grainStrength;
+          ctx.fillStyle = n > 0
+            ? `rgba(255,255,255,${a})`
+            : `rgba(0,0,0,${a * 0.5})`;
+          ctx.fillRect(x + seam + sx, y + seam + sy, 8, 8);
+        }
+      }
+    }
+  }
+
+  // 接缝线
+  ctx.strokeStyle = '#' + new THREE.Color(seamColor).getHexString();
+  ctx.lineWidth = 2;
+  // 水平缝
+  for (let r = 1; r < rows; r++) {
+    ctx.beginPath();
+    ctx.moveTo(0, r * tileH);
+    ctx.lineTo(width, r * tileH);
+    ctx.stroke();
+  }
+  // 垂直缝
+  for (let c = 1; c < cols; c++) {
+    ctx.beginPath();
+    ctx.moveTo(c * tileW, 0);
+    ctx.lineTo(c * tileW, height);
+    ctx.stroke();
+  }
+
+  // 边缘暗角
+  const vg = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, width * 0.7);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.15)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, width, height);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// ---------- 大尺寸地砖纹理（灰色瓷砖 + 细黑勾缝）----------
+export function makeTileTexture({
+  width = 1024, height = 1024,
+  size = 4,
+  tileColor = '#141824',
+  groutColor = '#080a0f',
+} = {}) {
+  const cv = makeCanvas(width, height);
+  const ctx = cv.getContext('2d');
+  const c0 = new THREE.Color(tileColor);
+
+  const tileW = width / size;
+  const tileH = height / size;
+  const grout = 2;
+
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const x = c * tileW;
+      const y = r * tileH;
+      // 每块砖有个体颜色扰动
+      const jit = (noise2(r * 3, c * 7, 1) - 0.5) * 0.04;
+      const tc = THREE.Color.lerpColors(c0, new THREE.Color(groutColor), 0.5 + jit);
+      ctx.fillStyle = '#' + tc.getHexString();
+      ctx.fillRect(x + grout, y + grout, tileW - grout * 2, tileH - grout * 2);
+
+      // 瓷砖内细微噪点
+      for (let i = 0; i < 15; i++) {
+        const nx = x + grout + Math.random() * (tileW - grout * 2);
+        const ny = y + grout + Math.random() * (tileH - grout * 2);
+        ctx.fillStyle = Math.random() < 0.5
+          ? 'rgba(255,255,255,0.03)'
+          : 'rgba(0,0,0,0.04)';
+        ctx.fillRect(nx, ny, 2, 2);
+      }
+    }
+  }
+
+  // 勾缝
+  ctx.fillStyle = '#' + new THREE.Color(groutColor).getHexString();
+  ctx.fillRect(0, 0, width, 1);
+  ctx.fillRect(0, 0, 1, height);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const x = c * tileW;
+      const y = r * tileH;
+      ctx.fillRect(x + tileW - grout, y + grout, grout, tileH - grout * 2);
+      ctx.fillRect(x + grout, y + tileH - grout, tileW - grout * 2, grout);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 16;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 // ---------- 工具函数 ----------
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 function rgbHex(r, g, b) {

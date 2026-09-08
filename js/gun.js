@@ -23,28 +23,28 @@ export function createM1911() {
     width: 256, height: 256, color: '#2a1e14',
   });
 
-  // === 材质 ===
+  // === 材质（现代精致感） ===
   const matSteel = new THREE.MeshStandardMaterial({
-    color: 0x1e1e24, roughness: 0.35, metalness: 0.92,
+    color: 0x1e1e24, roughness: 0.28, metalness: 0.95,
     map: steelTex,
   });
   const matFrame = new THREE.MeshStandardMaterial({
-    color: 0x2a2a30, roughness: 0.4, metalness: 0.85,
+    color: 0x2a2a30, roughness: 0.35, metalness: 0.88,
     map: frameTex,
   });
   const matGrip = new THREE.MeshStandardMaterial({
-    color: 0x141210, roughness: 0.75, metalness: 0.1,
+    color: 0x141210, roughness: 0.7, metalness: 0.15,
   });
   const matWood = new THREE.MeshStandardMaterial({
-    color: 0x2a1e14, roughness: 0.7, metalness: 0.1,
+    color: 0x2a1e14, roughness: 0.65, metalness: 0.1,
     map: woodTex,
   });
   const matSight = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.6, metalness: 0.4,
+    color: 0x111111, roughness: 0.5, metalness: 0.5,
   });
   const matDot = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const matSerr = new THREE.MeshStandardMaterial({
-    color: 0x141414, roughness: 0.8, metalness: 0.6,
+    color: 0x141414, roughness: 0.7, metalness: 0.7,
   });
 
   // === 滑套 slide（主体长方体，带细微倒角感） ===

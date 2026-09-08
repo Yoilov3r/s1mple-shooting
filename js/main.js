@@ -14,22 +14,25 @@ function createRenderer() {
     antialias: true,
     alpha: true,
     powerPreference: 'high-performance',
+    stencil: false,
+    depth: true,
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.0;
+  renderer.sortObjects = true;
   document.body.appendChild(renderer.domElement);
   return renderer;
 }
 
 function createScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0e121e);
-  scene.fog = new THREE.Fog(0x0e121e, 40, 100);
+  scene.background = new THREE.Color(0x0a0e18);
+  scene.fog = new THREE.Fog(0x0a0e18, 35, 95);
   return scene;
 }
 
