@@ -7,27 +7,58 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 抬头显示：准星 / 分数 / 倒计时 -->
-  <div id="hud">
+  <!-- 抬头显示：准星 / 模式 / 分数 / 倒计时 -->
+  <div id="hud" hidden>
     <div id="crosshair"></div>
     <div id="crosshair-dot"></div>
+    <div id="mode-indicator"></div>
     <div id="score">分数 0</div>
     <div id="timer">5.0</div>
   </div>
 
-  <!-- 统一遮罩：开始 / 暂停 / 结束 共用 -->
-  <div id="overlay">
-    <h1 id="overlay-title">s1mple shooting</h1>
-    <p id="overlay-subtitle">WASD 移动 · 鼠标转动视角 · 左键开火</p>
-    <button id="startBtn">开始游戏</button>
+  <!-- 大厅 -->
+  <div id="lobby">
+    <div class="lobby-card">
+      <h1 class="lobby-title"><span>s1mple</span> shooting</h1>
+      <p class="lobby-subtitle">3D 气球射击 · WASD 移动 · 鼠标转动视角 · 左键开火</p>
+      <div class="mode-buttons">
+        <button class="mode-btn" data-mode="training">
+          <span class="mode-icon">T</span>
+          <span class="mode-name">训练模式</span>
+          <span class="mode-desc">自由练习，每次命中倒计时 5 秒</span>
+        </button>
+        <button class="mode-btn" data-mode="challenge">
+          <span class="mode-icon">C</span>
+          <span class="mode-name">挑战模式</span>
+          <span class="mode-desc">60 秒限时挑战，空枪扣 10 分</span>
+        </button>
+      </div>
+      <div id="leaderboard">
+        <h2>排行榜</h2>
+        <div class="lb-row lb-best">
+          <span class="lb-label">最好成绩</span>
+          <span class="lb-value" id="lb-best">0</span>
+        </div>
+        <div class="lb-row lb-recent-header">
+          <span class="lb-label">最近五次</span>
+        </div>
+        <div id="lb-recent" class="lb-recent-list"></div>
+      </div>
+    </div>
   </div>
 
-  <!-- ES Modules + importmap 引入 Three.js -->
+  <!-- 统一遮罩（暂停/结束） -->
+  <div id="overlay" hidden>
+    <h1 id="overlay-title">s1mple shooting</h1>
+    <p id="overlay-subtitle"></p>
+    <button id="overlay-btn">开始游戏</button>
+  </div>
+
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      "three": "./lib/three.module.js",
+      "three/addons/": "./lib/addons/"
     }
   }
   </script>

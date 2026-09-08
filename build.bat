@@ -9,6 +9,8 @@ pyinstaller --noconfirm --onefile --windowed ^
   --add-data "index.html;." ^
   --add-data "css;css" ^
   --add-data "js;js" ^
+  --add-data "assets;assets" ^
+  --add-data "lib;lib" ^
   --collect-all webview ^
   --collect-all clr_loader ^
   launcher.py
