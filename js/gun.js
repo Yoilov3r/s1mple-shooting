@@ -9,42 +9,42 @@ export function createM1911() {
   // === 生成共享纹理 ===
   const steelTex = makeMetalBlastTexture({
     width: 512, height: 256,
-    tint: '#2b2b30', direction: 'horizontal',
+    tint: '#1e1e24', direction: 'horizontal',
   });
   steelTex.wrapS = steelTex.wrapT = THREE.RepeatWrapping;
 
   const frameTex = makeMetalBlastTexture({
     width: 512, height: 256,
-    tint: '#3a3a40', direction: 'horizontal',
+    tint: '#2a2a30', direction: 'horizontal',
   });
   frameTex.wrapS = frameTex.wrapT = THREE.RepeatWrapping;
 
   const woodTex = makeWoodTexture({
-    width: 256, height: 256, color: '#4a3a28',
+    width: 256, height: 256, color: '#2a1e14',
   });
 
-  // === 材质 ===
+  // === 材质（现代精致感） ===
   const matSteel = new THREE.MeshStandardMaterial({
-    color: 0x2b2b30, roughness: 0.42, metalness: 0.88,
+    color: 0x1e1e24, roughness: 0.28, metalness: 0.95,
     map: steelTex,
   });
   const matFrame = new THREE.MeshStandardMaterial({
-    color: 0x3a3a40, roughness: 0.48, metalness: 0.78,
+    color: 0x2a2a30, roughness: 0.35, metalness: 0.88,
     map: frameTex,
   });
   const matGrip = new THREE.MeshStandardMaterial({
-    color: 0x1c1410, roughness: 0.72, metalness: 0.15,
+    color: 0x141210, roughness: 0.7, metalness: 0.15,
   });
   const matWood = new THREE.MeshStandardMaterial({
-    color: 0x4a3a28, roughness: 0.7, metalness: 0.1,
+    color: 0x2a1e14, roughness: 0.65, metalness: 0.1,
     map: woodTex,
   });
   const matSight = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.6, metalness: 0.4,
+    color: 0x111111, roughness: 0.5, metalness: 0.5,
   });
   const matDot = new THREE.MeshBasicMaterial({ color: 0xffffff });
   const matSerr = new THREE.MeshStandardMaterial({
-    color: 0x141414, roughness: 0.8, metalness: 0.6,
+    color: 0x141414, roughness: 0.7, metalness: 0.7,
   });
 
   // === 滑套 slide（主体长方体，带细微倒角感） ===

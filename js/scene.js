@@ -1,194 +1,389 @@
-// 场景内容：灰白砖瓦正方体房间 + 围栏分隔 + 多层光照
+// 场景：现代训练场风格 — 金属框架 + 预制墙板 + 大尺寸地砖 + 格栅吊顶灯
+// 精致几何体：倒角边框 + 精准分段 + PBR 材质 + 真实光影
 import * as THREE from 'three';
-import { makeBrickTexture, makeMetalBlastTexture } from './textures.js';
+import { makePanelTexture, makeTileTexture, makeBrickNormalTexture } from './textures.js';
 
-// 构建砖瓦纹理墙面的材质
-function makeWallMaterial(texture, repeatX, repeatY, color = 0xe5e2dc) {
-  const tex = texture.clone();
-  tex.repeat.set(repeatX, repeatY);
-  tex.needsUpdate = true;
-  return new THREE.MeshStandardMaterial({
-    map: tex,
-    color: color,
-    roughness: 0.92,
-    metalness: 0.0,
+// 墙面：灰色哑光面板 + 金属框架收边
+function makeWallMaterials() {
+  const panelTex = makePanelTexture({
+    width: 1024, height: 1024,
+    baseColor: '#1c202e',
+    seamColor: '#12161f',
+    grainStrength: 0.08,
   });
+  const panelNormal = makeBrickNormalTexture({ width: 1024, height: 1024 });
+
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x0c0e14,
+    roughness: 0.25,
+    metalness: 0.9,
+  });
+
+  const panelMat = new THREE.MeshStandardMaterial({
+    map: panelTex,
+    normalMap: panelNormal,
+    normalScale: new THREE.Vector2(0.7, 0.7),
+    color: 0x1c202e,
+    roughness: 0.65,
+    metalness: 0.05,
+  });
+
+  return { frame: frameMat, panel: panelMat };
 }
 
-// 构建超大正方体房间（内壁可见，砖瓦纹理）
 export function createRoom(size = 60) {
   const group = new THREE.Group();
   const half = size / 2;
+  const ceilingH = 12; // 现代空间，高度 12 米更合理
+  const frameW = 0.15; // 框架宽度
 
-  // 生成共享砖瓦纹理（一次生成，多面复用）
-  const brickTex = makeBrickTexture({
+  const materials = makeWallMaterials();
+
+  // --- 天空穹顶：深空渐变 + 星星 ---
+  const skyCanvas = document.createElement('canvas');
+  skyCanvas.width = 1024; skyCanvas.height = 512;
+  const ctx = skyCanvas.getContext('2d');
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, 512);
+  skyGrad.addColorStop(0, '#0e1a30');
+  skyGrad.addColorStop(0.3, '#162840');
+  skyGrad.addColorStop(0.6, '#1c3050');
+  skyGrad.addColorStop(0.9, '#223858');
+  skyGrad.addColorStop(1, '#284060');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, 1024, 512);
+  // 星星
+  for (let i = 0; i < 200; i++) {
+    const sx = Math.random() * 1024;
+    const sy = Math.random() * 256;
+    const br = 120 + Math.random() * 135;
+    const r = 0.3 + Math.random() * 1.2;
+    ctx.fillStyle = `rgba(${br},${br},${br},${0.3 + Math.random() * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const skyTex = new THREE.CanvasTexture(skyCanvas);
+  const skyGeo = new THREE.SphereGeometry(half * 3, 48, 24);
+  const skyMat = new THREE.MeshBasicMaterial({
+    map: skyTex,
+    side: THREE.BackSide,
+    fog: false,
+  });
+  const sky = new THREE.Mesh(skyGeo, skyMat);
+  group.add(sky);
+
+  // 太阳光晕
+  const sunGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(5, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xfff0e0, transparent: true, opacity: 0.4 })
+  );
+  sunGlow.position.set(25, 40, -25);
+  group.add(sunGlow);
+
+  // --- 地面：大尺寸灰色地砖 + 黑色勾缝 ---
+  const groundTex = makeTileTexture({
     width: 1024, height: 1024,
-    rows: 14, cols: 8,
-    baseColor: '#e5e2dc',
-    mortarColor: '#8a8782',
-    darkShift: 28,
-    contrast: 1.15,
+    size: 4,
+    tileColor: '#141824',
+    groutColor: '#080a0f',
+  });
+  const tileMat = new THREE.MeshStandardMaterial({
+    map: groundTex,
+    color: 0x141824,
+    roughness: 0.7,
+    metalness: 0.1,
   });
 
-  const geo = new THREE.PlaneGeometry(size, size, 1, 1);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size, 1, 1),
+    tileMat
+  );
+  floor.rotation.set(-Math.PI / 2, 0, 0);
+  floor.position.set(0, 0, 0);
+  floor.receiveShadow = true;
+  group.add(floor);
 
-  // 四面墙：砖瓦纹理，repeat 根据房间尺寸调整
-  // 左右墙（X 面）
-  const matX = makeWallMaterial(brickTex, 4, 3);
-  // 前后墙（Z 面）
-  const matZ = makeWallMaterial(brickTex, 4, 3, 0xdedcd6);
-
-  // 地板：较深灰，微弱反射
-  const floorTex = makeBrickTexture({
-    width: 1024, height: 1024,
-    rows: 10, cols: 10,
-    baseColor: '#c8c6c0',
-    mortarColor: '#9a9893',
-    darkShift: 20,
-    contrast: 0.8,
+  // 地面发光网格线（Aim Rush 标志性元素）
+  const gridMat = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    transparent: true,
+    opacity: 0.06,
+    depthWrite: false,
   });
-  const matFloor = makeWallMaterial(floorTex, 6, 6, 0xc4c2bc);
-  matFloor.roughness = 0.85;
+  const gridGeo = new THREE.PlaneGeometry(size - 4, size - 4, 14, 14);
+  const grid = new THREE.Mesh(gridGeo, gridMat);
+  grid.rotation.set(-Math.PI / 2, 0, 0);
+  grid.position.set(0, 0.01, 0);
+  group.add(grid);
 
-  // 天花板：最亮，模拟天窗漫射
-  const ceilTex = makeBrickTexture({
-    width: 1024, height: 1024,
-    rows: 12, cols: 12,
-    baseColor: '#eeecea',
-    mortarColor: '#c0bdb8',
-    darkShift: 10,
-    contrast: 0.5,
+  // --- 四周墙体：框架 + 面板 ---
+  // 每个墙分为：左右两根竖框 + 上下两根横框 + 中间面板
+  function buildWall(xSide, zSide, matFrame, matPanel) {
+    const w = xSide !== 0 ? size - frameW * 2 : size;
+    const h = ceilingH - frameW * 2;
+    const panelGeo = new THREE.PlaneGeometry(w, h, 1, 1);
+    const panel = new THREE.Mesh(panelGeo, matPanel);
+    panel.receiveShadow = true;
+    panel.position.set(
+      xSide * (half - 0),
+      ceilingH / 2,
+      zSide * half
+    );
+    if (xSide !== 0) panel.rotation.y = xSide * Math.PI / 2;
+    group.add(panel);
+
+    // 竖框
+    if (xSide === 0) {
+      for (const s of [-1, 1]) {
+        const post = new THREE.Mesh(
+          new THREE.BoxGeometry(frameW, ceilingH, frameW), matFrame
+        );
+        post.position.set(s * (half - frameW / 2), ceilingH / 2, zSide * half);
+        post.castShadow = true;
+        post.receiveShadow = true;
+        group.add(post);
+      }
+    } else {
+      // 上下横框
+      for (const s of [-1, 1]) {
+        const beam = new THREE.Mesh(
+          new THREE.BoxGeometry(size, frameW, frameW), matFrame
+        );
+        beam.position.set(0, (s * (ceilingH / 2 - frameW / 2)), zSide * half);
+        beam.castShadow = true;
+        beam.receiveShadow = true;
+        group.add(beam);
+      }
+    }
+  }
+
+  const mf = materials.frame;
+  const mp = materials.panel;
+  buildWall(-1,  0, mf, mp); // -X
+  buildWall( 1,  0, mf, mp); // +X
+  buildWall( 0, -1, mf, mp); // -Z
+  buildWall( 0,  1, mf, mp); // +Z
+
+  // --- 墙角内角金属倒角收边 ---
+  const cornerPostMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0e14, roughness: 0.25, metalness: 0.9,
   });
-  const matCeil = makeWallMaterial(ceilTex, 5, 5, 0xe8e6e0);
-
-  const faces = [
-    { pos: [ half, 0, 0], rot: [0,  Math.PI / 2, 0], mat: matX },
-    { pos: [-half, 0, 0], rot: [0, -Math.PI / 2, 0], mat: matX },
-    { pos: [0,  half, 0], rot: [-Math.PI / 2, 0, 0], mat: matCeil },
-    { pos: [0, -half, 0], rot: [ Math.PI / 2, 0, 0], mat: matFloor },
-    { pos: [0, 0,  half], rot: [0, 0, 0],            mat: matZ },
-    { pos: [0, 0, -half], rot: [0, Math.PI, 0],      mat: matZ },
+  const corners = [
+    [ half, -half], [-half, -half],
+    [ half,  half], [-half,  half],
   ];
+  for (const [x, z] of corners) {
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(frameW * 1.2, ceilingH, frameW * 1.2),
+      cornerPostMat
+    );
+    post.position.set(x, ceilingH / 2, z);
+    post.castShadow = true;
+    post.receiveShadow = true;
+    group.add(post);
+  }
 
-  faces.forEach(f => {
-    const mesh = new THREE.Mesh(geo, f.mat);
-    mesh.position.set(...f.pos);
-    mesh.rotation.set(...f.rot);
-    mesh.receiveShadow = true;
-    group.add(mesh);
+  // --- 踢脚线 ---
+  const baseMat = new THREE.MeshStandardMaterial({
+    color: 0x0c0e14, roughness: 0.3, metalness: 0.8,
   });
+  const baseH = 0.12;
+  const baseD = 0.08;
+  for (const x of [-half, half]) {
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(baseD, baseH, size - frameW * 2), baseMat
+    );
+    base.position.set(Math.sign(x) * (half - baseD / 2), baseH / 2, 0);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+  }
+  for (const z of [-half, half]) {
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(size - frameW * 2, baseH, baseD), baseMat
+    );
+    base.position.set(0, baseH / 2, Math.sign(z) * (half - baseD / 2));
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+  }
 
-  // === 围栏：在 z=0 处横跨房间，分隔前后两半 ===
-  group.add(createFence(size));
+  // --- 天花板：金属格栅灯 ---
+  const ceilingTex = makePanelTexture({
+    width: 1024, height: 1024,
+    baseColor: '#141824',
+    seamColor: '#0a0e14',
+  });
+  const ceilingMat = new THREE.MeshStandardMaterial({
+    map: ceilingTex,
+    color: 0x141824,
+    roughness: 0.4,
+    metalness: 0.3,
+  });
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(size - frameW * 2, size - frameW * 2, 8, 8),
+    ceilingMat
+  );
+  ceiling.rotation.set(Math.PI / 2, 0, 0);
+  ceiling.position.set(0, ceilingH, 0);
+  ceiling.castShadow = false;
+  ceiling.receiveShadow = true;
+  group.add(ceiling);
+
+  // 格栅灯（嵌入式 LED 面板灯）
+  const ledMat = new THREE.MeshBasicMaterial({
+    color: 0xfff8ee,
+    transparent: true,
+    opacity: 0.95,
+  });
+  const ledFrameMat = new THREE.MeshStandardMaterial({
+    color: 0x0c0e14,
+    roughness: 0.2,
+    metalness: 0.9,
+  });
+  const gridCount = 4;
+  const step = (size - frameW * 2) / gridCount;
+  const ledSize = step * 0.8;
+  const ledY = ceilingH - 0.03;
+  for (let ix = 0; ix < gridCount; ix++) {
+    for (let iz = 0; iz < gridCount; iz++) {
+      const x = (-size / 2 + frameW) + (ix + 0.5) * step;
+      const z = (-size / 2 + frameW) + (iz + 0.5) * step;
+      // 灯框
+      const ledFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(ledSize + 0.05, 0.05, ledSize + 0.05),
+        ledFrameMat
+      );
+      ledFrame.position.set(x, ledY, z);
+      group.add(ledFrame);
+      // 发光面板
+      const ledPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(ledSize, 0.02, ledSize),
+        ledMat
+      );
+      ledPanel.position.set(x, ledY - 0.02, z);
+      group.add(ledPanel);
+      // 点光源补光
+      const light = new THREE.PointLight(0xfff8ee, 10, 18, 2);
+      light.position.set(x, ledY - 0.05, z);
+      light.castShadow = false;
+      group.add(light);
+    }
+  }
+
+  // --- 围栏：深色金属，z=0 处 ---
+  group.add(createModernFence(size));
 
   return group;
 }
 
-// 围栏：金属立柱 + 横杆，z=0 处横跨 X 轴
-function createFence(roomSize) {
+// 现代围栏：方形立柱 + 矩形横杆 + 更重几何感，倒角圆角
+function createModernFence(roomSize) {
   const fence = new THREE.Group();
   const half = roomSize / 2;
 
-  const matRail = new THREE.MeshStandardMaterial({
-    color: 0x4a4d52, roughness: 0.35, metalness: 0.85,
-  });
   const matPost = new THREE.MeshStandardMaterial({
-    color: 0x3a3d42, roughness: 0.4, metalness: 0.8,
+    color: 0x0c0e14, roughness: 0.25, metalness: 0.9,
+  });
+  const matRail = new THREE.MeshStandardMaterial({
+    color: 0x141824, roughness: 0.3, metalness: 0.85,
   });
 
-  const postH = 2.4;       // 立柱高度
-  const postR = 0.06;      // 立柱半径
-  const railR = 0.035;     // 横杆半径
-  const railY1 = 0.9;       // 下横杆高度
-  const railY2 = 1.8;      // 上横杆高度
+  const postH = 1.2;
+  const postW = 0.08;
+  const railW = 0.05;
+  const railY1 = 0.5;
+  const railY2 = 1.0;
 
-  // 立柱：每隔 5 米一根
-  const postCount = Math.floor(roomSize / 5) + 1;
-  const startX = -half + (roomSize - (postCount - 1) * 5) / 2;
+  const postCount = Math.floor(roomSize / 3.5) + 1;
+  const startX = -half + (roomSize - (postCount - 1) * 3.5) / 2;
+
   for (let i = 0; i < postCount; i++) {
-    const x = startX + i * 5;
+    const x = startX + i * 3.5;
     const post = new THREE.Mesh(
-      new THREE.CylinderGeometry(postR, postR, postH, 12), matPost
+      new THREE.BoxGeometry(postW, postH, postW), matPost
     );
     post.position.set(x, postH / 2, 0);
     post.castShadow = true;
     post.receiveShadow = true;
     fence.add(post);
-
-    // 立柱顶部装饰球
+    // 顶部圆角顶盖
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(postR * 1.4, 12, 8), matPost
+      new THREE.BoxGeometry(postW * 1.1, 0.05, postW * 1.1), matPost
     );
-    cap.position.set(x, postH, 0);
+    cap.position.set(x, postH - 0.025, 0);
     fence.add(cap);
   }
 
-  // 横杆：两根，贯穿整个房间宽度
   for (const y of [railY1, railY2]) {
     const rail = new THREE.Mesh(
-      new THREE.CylinderGeometry(railR, railR, roomSize - 1, 12), matRail
+      new THREE.BoxGeometry(roomSize - 1.6, railW, postW), matRail
     );
-    rail.rotation.z = Math.PI / 2;
     rail.position.set(0, y, 0);
     rail.castShadow = true;
     rail.receiveShadow = true;
     fence.add(rail);
   }
 
-  // 竖向装饰杆（立柱之间）
-  const spacing = 0.5;
-  const decoMat = new THREE.MeshStandardMaterial({
-    color: 0x55585e, roughness: 0.35, metalness: 0.8,
+  // 竖向连杆
+  const spacing = 0.35;
+  const linkMat = new THREE.MeshStandardMaterial({
+    color: 0x141824, roughness: 0.3, metalness: 0.8,
   });
   for (let i = 0; i < postCount - 1; i++) {
-    const x0 = startX + i * 5;
-    const x1 = startX + (i + 1) * 5;
-    for (let x = x0 + spacing; x < x1 - spacing + 0.01; x += spacing) {
-      const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(railR * 0.5, railR * 0.5, railY2 - railY1, 8), decoMat
+    const x0 = startX + i * 3.5;
+    const x1 = startX + (i + 1) * 3.5;
+    const steps = Math.floor((x1 - x0) / spacing);
+    const step = (x1 - x0) / steps;
+    for (let s = 1; s < steps; s++) {
+      const x = x0 + s * step;
+      const link = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, railY2 - railY1, 0.03), linkMat
       );
-      bar.position.set(x, (railY1 + railY2) / 2, 0);
-      bar.castShadow = true;
-      fence.add(bar);
+      link.position.set(x, (railY1 + railY2) / 2, 0);
+      link.castShadow = true;
+      fence.add(link);
     }
   }
 
   return fence;
 }
 
-// 多层光照：环境光 + 主光 + 暖色补光 + 半球光
+// 现代多层光照：面板灯补光 + 主方向光 + 环境光
 export function createLights() {
   const group = new THREE.Group();
 
-  // 环境光略降，让方向光阴影更有层次
-  group.add(new THREE.AmbientLight(0xffffff, 0.42));
+  // 环境光（冷色，更亮）
+  group.add(new THREE.AmbientLight(0x284060, 0.6));
 
-  // 主光：顶部偏前，模拟天窗
-  const key = new THREE.DirectionalLight(0xffffff, 1.0);
-  key.position.set(8, 25, 12);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.left = -32;
-  key.shadow.camera.right = 32;
-  key.shadow.camera.top = 32;
-  key.shadow.camera.bottom = -32;
-  key.shadow.camera.near = 1;
-  key.shadow.camera.far = 90;
-  key.shadow.bias = -0.0005;
-  group.add(key);
+  // 主方向光：来自天空，冷白色，更亮
+  const dir = new THREE.DirectionalLight(0xe8f0ff, 1.5);
+  dir.position.set(8, 20, -12);
+  dir.castShadow = true;
+  dir.shadow.mapSize.set(2048, 2048);
+  dir.shadow.camera.left = -32;
+  dir.shadow.camera.right = 32;
+  dir.shadow.camera.top = 32;
+  dir.shadow.camera.bottom = -32;
+  dir.shadow.camera.near = 1;
+  dir.shadow.camera.far = 80;
+  dir.shadow.bias = -0.0003;
+  dir.shadow.normalBias = 0.015;
+  group.add(dir);
 
-  // 暖色补光：从对角方向软化阴影
-  const fill = new THREE.DirectionalLight(0xfff1e0, 0.35);
-  fill.position.set(-12, 8, -10);
+  // 暖色补光：从另一侧进来，增加对比
+  const fill = new THREE.DirectionalLight(0xffcc88, 0.5);
+  fill.position.set(-10, 8, 8);
   group.add(fill);
 
-  // 半球光：上下色温过渡，增加体积感
-  group.add(new THREE.HemisphereLight(0xffffff, 0xb0aca4, 0.35));
+  // 半球光（顶部冷色，地面暖灰）
+  group.add(new THREE.HemisphereLight(0x4466aa, 0x1a1e28, 0.5));
 
-  // 围栏侧聚光：增强 z=0 分隔区域的存在感
-  const accent = new THREE.SpotLight(0xfff5e8, 0.5, 40, Math.PI / 6, 0.5, 1.2);
-  accent.position.set(0, 15, 0);
+  // 围栏背光强调轮廓
+  const accent = new THREE.SpotLight(0x00d4ff, 0.6, 30, Math.PI / 5, 0.4, 1.2);
+  accent.position.set(0, 8, 6);
   accent.target.position.set(0, 0, 0);
+  accent.castShadow = false;
   group.add(accent);
   group.add(accent.target);
 
