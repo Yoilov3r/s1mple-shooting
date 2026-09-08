@@ -41,7 +41,7 @@ export function makeBrickTexture({
   const ctx = cv.getContext('2d');
 
   const c0 = new THREE.Color(baseColor);
-  const c1 = new THREE.Color(mortorColor(mortarColor));
+  const c1 = new THREE.Color(mortarColor);
 
   const tileW = width / cols;
   const tileH = height / rows;
@@ -101,9 +101,6 @@ export function makeBrickTexture({
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-
-// 处理拼错的 mortor 别名
-function mortorColor(c) { return c; }
 
 // ---------- 砖墙法线贴图（程序化凹凸感） ----------
 export function makeBrickNormalTexture({
