@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import { state } from './state.js';
 
 const COLORS = [
-  0xe53935, // 红
-  0xfb8c00, // 橙
-  0xfdd835, // 黄
-  0xd81b60, // 粉
-  0x1e88e5, // 蓝
-  0x43a047, // 绿
-  0x8e24aa, // 紫
+  0xff1744, // 红（亮）
+  0xff9100, // 橙（亮）
+  0xffea00, // 黄（亮）
+  0xf50057, // 粉（亮）
+  0x2979ff, // 蓝（亮）
+  0x00e676, // 绿（亮）
+  0xd500f9, // 紫（亮）
 ];
 
 const MIN_RADIUS = 0.22;
@@ -51,10 +51,10 @@ function buildBalloonMesh(radius, colorHex) {
     new THREE.SphereGeometry(radius, 24, 18),
     new THREE.MeshStandardMaterial({
       color: colorHex,
-      roughness: 0.35,
-      metalness: 0.05,
+      roughness: 0.25,
+      metalness: 0.0,
       emissive: colorHex,
-      emissiveIntensity: 0.06,
+      emissiveIntensity: 0.55,
     })
   );
   body.castShadow = true;
