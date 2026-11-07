@@ -1,7 +1,8 @@
 // 入口：创建渲染器、场景、相机并启动渲染循环
 import * as THREE from 'three';
 import { state } from './state.js';
-import { createRoom, createLights } from './scene.js';
+import { activateTheme, updateScene } from './scene.js';
+import { preloadModels } from './models.js';
 import { initControls, updateControls } from './controls.js';
 import { attachWeapon } from './gun.js';
 import { updateBalloons } from './balloon.js';
@@ -31,8 +32,6 @@ function createRenderer() {
 
 function createScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xd9d6d0);
-  scene.fog = new THREE.Fog(0xd9d6d0, 45, 110);
   return scene;
 }
 
@@ -62,6 +61,7 @@ function animate() {
   updateBalloons(elapsed);
   updateDustParticles(dt);
   updateEffects(dt);
+  updateScene(dt, elapsed);
   updateGame();
   state.renderer.render(state.scene, state.camera);
 }
@@ -72,9 +72,11 @@ function bootstrap() {
   state.renderer = createRenderer();
   state.clock = new THREE.Clock();
 
-  // 房间 + 光照
-  state.scene.add(createRoom(60));
-  state.scene.add(createLights());
+  // 场景主题 + 光照（背景与雾由 activateTheme 统一设置）
+  activateTheme(state.scene, state.selectedScene, state.renderer);
+
+  // 后台预加载 glTF 开源模型（废墟 / 霓虹场景道具）
+  preloadModels();
 
   // 相机加入场景，才能让挂在相机下的手枪被渲染
   state.scene.add(state.camera);

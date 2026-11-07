@@ -1,10 +1,12 @@
 // 游戏流程：大厅 / 训练 / 挑战 / 暂停 / 结束
 import { state, leaderboard } from './state.js';
+import { SCENES, activateTheme } from './scene.js';
 import { initBalloons, clearBalloons } from './balloon.js';
 import { requestLock, resetCamera } from './controls.js';
 
 let overlayEl, titleEl, subEl, btnEl, scoreEl, timerEl, modeEl, hudEl;
 let lobbyEl, lbBestEl, lbRecentEl;
+let sceneBtns = [];
 let phase = 'lobby'; // 'lobby' | 'playing' | 'paused' | 'over'
 
 const TRAINING_HIT_TIMER = 5.0;
@@ -28,6 +30,13 @@ export function initGame() {
     btn.addEventListener('click', () => startGame(btn.dataset.mode));
   });
 
+  // 场景选择器（大厅内即时预览主题）
+  sceneBtns = Array.from(document.querySelectorAll('.scene-btn'));
+  for (const btn of sceneBtns) {
+    btn.addEventListener('click', () => selectScene(btn.dataset.scene));
+  }
+  refreshSceneButtons();
+
   // 暂停/结束 按钮
   btnEl.addEventListener('click', onButtonClick);
   document.addEventListener('score:updated', updateScoreUI);
@@ -41,6 +50,22 @@ export function initGame() {
   });
 
   refreshLeaderboard();
+}
+
+// --- 场景选择 ---
+
+function selectScene(key) {
+  if (!SCENES[key]) return;
+  state.selectedScene = key;
+  refreshSceneButtons();
+  // 大厅背景半透明，切换后可直接看到主题预览
+  activateTheme(state.scene, key, state.renderer);
+}
+
+function refreshSceneButtons() {
+  for (const btn of sceneBtns) {
+    btn.classList.toggle('is-active', btn.dataset.scene === state.selectedScene);
+  }
 }
 
 // --- 显示控制 ---
@@ -79,19 +104,23 @@ function startGame(mode) {
   state.running = true;
   phase = 'playing';
 
+  // 确保使用玩家最后选中的场景
+  activateTheme(state.scene, state.selectedScene, state.renderer);
+  const sceneLabel = SCENES[state.selectedScene] ? SCENES[state.selectedScene].label : '';
+
   // 重置相机到初始位置
   resetCamera();
 
   if (mode === 'challenge') {
     state.challengeStartTime = performance.now();
     state.challengeTimeLeft = CHALLENGE_DURATION;
-    modeEl.textContent = '挑战模式';
+    modeEl.textContent = `${sceneLabel} · 挑战模式`;
     modeEl.style.color = '#ff6b35';
     timerEl.textContent = CHALLENGE_DURATION.toFixed(1);
     timerEl.classList.remove('danger');
   } else {
     state.lastHitTime = performance.now();
-    modeEl.textContent = '训练模式';
+    modeEl.textContent = `${sceneLabel} · 训练模式`;
     modeEl.style.color = '#4fc3f7';
     timerEl.textContent = TRAINING_HIT_TIMER.toFixed(1);
     timerEl.classList.remove('danger');

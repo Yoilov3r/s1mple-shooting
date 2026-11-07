@@ -132,7 +132,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 18, 30, 0.92);
+  background: rgba(14, 18, 30, 0.86);
 }
 
 #lobby[hidden] { display: none !important; }
@@ -168,6 +168,87 @@ canvas {
   margin-bottom: 36px;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+/* 场景选择器 */
+.scene-picker {
+  text-align: left;
+  margin-bottom: 26px;
+}
+
+.scene-picker-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.scene-options {
+  display: flex;
+  gap: 10px;
+}
+
+.scene-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 8px 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+
+.scene-btn:hover {
+  border-color: rgba(0, 212, 255, 0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+}
+
+.scene-btn.is-active {
+  border-color: rgba(0, 212, 255, 0.45);
+  background: rgba(0, 212, 255, 0.06);
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.06);
+}
+
+.scene-thumb {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.scene-btn[data-scene="training"] .scene-thumb {
+  background: linear-gradient(140deg, #f2f0ea 0%, #c9c6c0 55%, #96938d 100%);
+}
+
+.scene-btn[data-scene="dusk"] .scene-thumb {
+  background: linear-gradient(160deg, #241826 0%, #a34a44 55%, #ff9a55 100%);
+}
+
+.scene-btn[data-scene="neon"] .scene-thumb {
+  background:
+    linear-gradient(90deg, transparent 0 14%, rgba(34,230,255,0.7) 14% 17%, transparent 17% 60%, rgba(255,63,164,0.6) 60% 63%, transparent 63%),
+    linear-gradient(135deg, #04060d 0%, #0e1c33 100%);
+}
+
+.scene-name {
+  font-size: 11px;
+  color: #b9c4d6;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.scene-btn.is-active .scene-name {
+  color: #eaf6ff;
 }
 
 /* 模式按钮 */

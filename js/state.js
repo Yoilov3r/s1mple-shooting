@@ -8,6 +8,7 @@ export const state = {
   running: false,      // 是否处于游戏进行中
   lastHitTime: 0,      // 最近一次命中气球的时间戳
   mode: null,          // 'training' | 'challenge'
+  selectedScene: 'training', // 'training' | 'dusk' | 'neon'
   challengeTimeLeft: 60, // 挑战模式剩余时间
 };
 
