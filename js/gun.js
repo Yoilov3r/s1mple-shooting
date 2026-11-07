@@ -1,247 +1,338 @@
-// 精致 M1911 手枪模型：滑套 + 框架 + 握把 + 扳机护圈 + 击锤 + 保险 + 准星 等
-// 贴合程序化金属拉丝 / 木纹纹理，提升真实感
+// M1911 手枪 — 精细几何版
+// 关键升级：圆角挤出体（ExtrudeGeometry）替代纯方盒，滑套/框架/握把均有真实倒角
+// 性能：防滑纹与格纹改用 InstancedMesh，draw call 大幅下降
 import * as THREE from 'three';
 import { makeMetalBlastTexture, makeWoodTexture } from './textures.js';
+
+// 圆角矩形截面（XY 平面）
+function roundedRectShape(w, h, r) {
+  const s = new THREE.Shape();
+  const hw = w / 2, hh = h / 2;
+  s.moveTo(-hw + r, -hh);
+  s.lineTo(hw - r, -hh);
+  s.quadraticCurveTo(hw, -hh, hw, -hh + r);
+  s.lineTo(hw, hh - r);
+  s.quadraticCurveTo(hw, hh, hw - r, hh);
+  s.lineTo(-hw + r, hh);
+  s.quadraticCurveTo(-hw, hh, -hw, hh - r);
+  s.lineTo(-hw, -hh + r);
+  s.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
+  s.closePath();
+  return s;
+}
+
+// 带倒角的圆角挤出体，沿 Z 轴，居中于原点
+function roundedExtrude({ w, h, r, depth, bevel = 0.008, steps = 1 }) {
+  const geo = new THREE.ExtrudeGeometry(roundedRectShape(w, h, r), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 2,
+    curveSegments: 4,
+    steps,
+  });
+  geo.translate(0, 0, -depth / 2);
+  geo.computeVertexNormals();
+  return geo;
+}
 
 export function createM1911() {
   const gun = new THREE.Group();
 
-  // === 生成共享纹理 ===
+  // ---------- 材质（无环境贴图时控制 metalness，避免发黑） ----------
   const steelTex = makeMetalBlastTexture({
-    width: 512, height: 256,
-    tint: '#2b2b30', direction: 'horizontal',
+    width: 512, height: 256, tint: '#55555c', direction: 'horizontal',
   });
-  steelTex.wrapS = steelTex.wrapT = THREE.RepeatWrapping;
+  steelTex.repeat.set(2, 2);
 
-  const frameTex = makeMetalBlastTexture({
-    width: 512, height: 256,
-    tint: '#3a3a40', direction: 'horizontal',
-  });
-  frameTex.wrapS = frameTex.wrapT = THREE.RepeatWrapping;
-
-  const woodTex = makeWoodTexture({
-    width: 256, height: 256, color: '#4a3a28',
-  });
-
-  // === 材质 ===
   const matSteel = new THREE.MeshStandardMaterial({
-    color: 0x2b2b30, roughness: 0.42, metalness: 0.88,
-    map: steelTex,
+    color: 0x6f7076, roughness: 0.34, metalness: 0.72, map: steelTex,
   });
   const matFrame = new THREE.MeshStandardMaterial({
-    color: 0x3a3a40, roughness: 0.48, metalness: 0.78,
-    map: frameTex,
+    color: 0x5f6066, roughness: 0.4, metalness: 0.65, map: steelTex,
+  });
+  const matDark = new THREE.MeshStandardMaterial({
+    color: 0x33343a, roughness: 0.55, metalness: 0.7,
   });
   const matGrip = new THREE.MeshStandardMaterial({
-    color: 0x1c1410, roughness: 0.72, metalness: 0.15,
+    color: 0x24201c, roughness: 0.82, metalness: 0.05,
   });
+  const matWoodTex = makeWoodTexture({ width: 256, height: 256, color: '#6a4526' });
   const matWood = new THREE.MeshStandardMaterial({
-    color: 0x4a3a28, roughness: 0.7, metalness: 0.1,
-    map: woodTex,
+    color: 0x8a5a30, roughness: 0.55, metalness: 0.06, map: matWoodTex,
   });
   const matSight = new THREE.MeshStandardMaterial({
-    color: 0x111111, roughness: 0.6, metalness: 0.4,
+    color: 0x1e1e20, roughness: 0.45, metalness: 0.55,
   });
+  const matHole = new THREE.MeshBasicMaterial({ color: 0x08080a });
   const matDot = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const matSerr = new THREE.MeshStandardMaterial({
-    color: 0x141414, roughness: 0.8, metalness: 0.6,
-  });
 
-  // === 滑套 slide（主体长方体，带细微倒角感） ===
-  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.07, 0.55), matSteel);
+  // ================= 滑套 Slide =================
+  // 圆角挤出，前窄后宽通过非等比缩放近似（顶部微收）
+  const slideGeo = roundedExtrude({ w: 0.195, h: 0.078, r: 0.016, depth: 0.565, bevel: 0.007 });
+  const slide = new THREE.Mesh(slideGeo, matSteel);
+  slide.position.set(0, 0.018, -0.005);
   gun.add(slide);
 
-  // 滑套顶部前后斜纹（cosmetic serrations）—加深加粗
-  for (let i = 0; i < 6; i++) {
-    const g1 = new THREE.Mesh(new THREE.BoxGeometry(0.182, 0.008, 0.014), matSerr);
-    g1.position.set(0, 0.036, 0.18 + i * 0.016);
-    gun.add(g1);
-    const g2 = g1.clone();
-    g2.position.z = -0.18 - i * 0.016;
-    gun.add(g2);
-  }
+  // 滑套顶部收窄的平面（真实 M1911 顶部有窄平面）
+  const slideTop = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.006, 0.56), matSteel
+  );
+  slideTop.position.set(0, 0.058, -0.005);
+  gun.add(slideTop);
 
-  // 滑套侧面也加纵向防滑纹
-  for (const sx of [-1, 1]) {
-    for (let i = 0; i < 6; i++) {
-      const sg = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.05, 0.012), matSerr);
-      sg.position.set(sx * 0.091, 0.005, 0.18 + i * 0.016);
-      gun.add(sg);
-      const sg2 = sg.clone();
-      sg2.position.z = -0.18 - i * 0.016;
-      gun.add(sg2);
-    }
+  // 套筒前后防滑凹槽（InstancedMesh：12 条减为 1 个 draw call）
+  const serrationGeo = new THREE.BoxGeometry(0.20, 0.052, 0.011);
+  const serrationCount = 14;
+  const serrations = new THREE.InstancedMesh(serrationGeo, matDark, serrationCount);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < serrationCount; i++) {
+    // 前 6 条在套筒前段，后 8 条在后段
+    const isFront = i < 6;
+    const z = isFront
+      ? 0.135 + i * 0.017
+      : -0.16 - (i - 6) * 0.017;
+    dummy.position.set(0, 0.040, z);
+    dummy.updateMatrix();
+    serrations.setMatrixAt(i, dummy.matrix);
   }
+  serrations.instanceMatrix.needsUpdate = true;
+  gun.add(serrations);
 
-  // === 枪管 barrel ===
+  // 抛壳窗（右侧凹陷，用深色薄片表现）
+  const ejectPort = new THREE.Mesh(
+    new THREE.BoxGeometry(0.004, 0.030, 0.105), matHole
+  );
+  ejectPort.position.set(0.096, 0.030, 0.045);
+  gun.add(ejectPort);
+
+  // 套筒前端倒角（视觉上收束）
+  const slideNose = new THREE.Mesh(
+    roundedExtrude({ w: 0.178, h: 0.070, r: 0.014, depth: 0.022, bevel: 0.005 }),
+    matSteel
+  );
+  slideNose.position.set(0, 0.018, 0.292);
+  gun.add(slideNose);
+
+  // ================= 枪管 Barrel =================
   const barrel = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.022, 0.025, 0.08, 20), matSteel
+    new THREE.CylinderGeometry(0.0225, 0.0245, 0.075, 20), matSteel
   );
   barrel.rotation.x = Math.PI / 2;
-  barrel.position.set(0, 0, 0.32);
+  barrel.position.set(0, 0.020, 0.318);
   gun.add(barrel);
 
-  // 枪口衬套 bushing
+  // 枪口衬套 Bushing
   const bushing = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.028, 0.028, 0.04, 20), matFrame
+    new THREE.CylinderGeometry(0.0295, 0.0295, 0.030, 20), matFrame
   );
   bushing.rotation.x = Math.PI / 2;
-  bushing.position.set(0, 0, 0.30);
+  bushing.position.set(0, 0.020, 0.300);
   gun.add(bushing);
 
-  // 枪口内部黑色凹陷
-  const muzzleHole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.014, 0.014, 0.06, 16),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  // 膛孔
+  const bore = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0135, 0.0135, 0.06, 14), matHole
   );
-  muzzleHole.rotation.x = Math.PI / 2;
-  muzzleHole.position.set(0, 0, 0.34);
-  gun.add(muzzleHole);
+  bore.rotation.x = Math.PI / 2;
+  bore.position.set(0, 0.020, 0.335);
+  gun.add(bore);
 
-  // === 框架 frame（滑套下方主体） ===
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.5), matFrame);
-  frame.position.set(0, -0.06, -0.01);
+  // ================= 框架 Frame =================
+  const frameGeo = roundedExtrude({ w: 0.168, h: 0.052, r: 0.011, depth: 0.50, bevel: 0.006 });
+  const frame = new THREE.Mesh(frameGeo, matFrame);
+  frame.position.set(0, -0.026, 0.005);
   gun.add(frame);
 
-  // 框架前端的导轨细节
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.08), matSteel);
-  rail.position.set(0, -0.035, 0.22);
-  gun.add(rail);
+  // 框架前段（滑套下方延伸至枪口下方）
+  const frameFront = new THREE.Mesh(
+    roundedExtrude({ w: 0.140, h: 0.044, r: 0.009, depth: 0.115, bevel: 0.005 }),
+    matFrame
+  );
+  frameFront.position.set(0, -0.030, 0.245);
+  gun.add(frameFront);
 
-  // === 握把 grip（向后倾斜约 18°） ===
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.22, 0.14), matGrip);
-  grip.position.set(0, -0.18, -0.18);
+  // ================= 握把 Grip =================
+  // 圆角挤出 + 18° 倾斜；截面在 XY，沿 Z 挤出厚度
+  const gripGeo = roundedExtrude({ w: 0.132, h: 0.245, r: 0.036, depth: 0.128, bevel: 0.010 });
+  const grip = new THREE.Mesh(gripGeo, matGrip);
+  grip.position.set(0, -0.168, -0.172);
   grip.rotation.x = -0.32;
   gun.add(grip);
 
-  // 握把两侧胡桃木饰板（加纹理）
-  for (const sx of [-1, 1]) {
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.19, 0.13), matWood);
-    panel.position.set(sx * 0.073, -0.18, -0.18);
-    panel.rotation.x = -0.32;
-    gun.add(panel);
+  // 握把背部弧形隆起（人机工程曲线）
+  const backstrapGeo = new THREE.CylinderGeometry(0.062, 0.062, 0.128, 12, 1, false, 0, Math.PI);
+  const backstrap = new THREE.Mesh(backstrapGeo, matGrip);
+  backstrap.rotation.set(-0.32, 0, Math.PI / 2);
+  backstrap.position.set(0, -0.278, -0.210);
+  gun.add(backstrap);
 
-    // 木饰板上的菱形防滑格纹
-    for (let r = 0; r < 5; r++) {
+  // 胡桃木饰板（两侧，圆角薄片）
+  const panelGeo = roundedExtrude({ w: 0.200, h: 0.118, r: 0.030, depth: 0.007, bevel: 0.003 });
+  for (const sx of [-1, 1]) {
+    const panel = new THREE.Mesh(panelGeo, matWood);
+    panel.position.set(sx * 0.070, -0.160, -0.172);
+    panel.rotation.set(-0.32, Math.PI / 2, 0);
+    panel.scale.set(1, 0.92, 1);
+    gun.add(panel);
+  }
+
+  // 饰板菱形格纹（InstancedMesh，24 个减为 1 个 draw call）
+  const diaGeo = new THREE.BoxGeometry(0.0025, 0.026, 0.026);
+  const diaCount = 24;
+  const diamonds = new THREE.InstancedMesh(diaGeo, matWood, diaCount);
+  let di = 0;
+  for (const sx of [-1, 1]) {
+    for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 3; c++) {
-        const diamond = new THREE.Mesh(
-          new THREE.BoxGeometry(0.002, 0.025, 0.025),
-          new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.8 })
+        dummy.position.set(
+          sx * 0.0745,
+          -0.075 - r * 0.052,
+          -0.132 - c * 0.038
         );
-        diamond.position.set(
-          sx * 0.077,
-          -0.12 + r * 0.035,
-          -0.12 + c * 0.04
-        );
-        diamond.rotation.x = -0.32;
-        diamond.rotation.z = Math.PI / 4;
-        gun.add(diamond);
+        dummy.rotation.set(-0.32, 0, Math.PI / 4);
+        dummy.updateMatrix();
+        diamonds.setMatrixAt(di++, dummy.matrix);
       }
     }
   }
+  diamonds.instanceMatrix.needsUpdate = true;
+  gun.add(diamonds);
 
-  // === 扳机护圈 trigger guard（半圆） ===
+  // ================= 扳机护圈 Trigger Guard =================
   const guard = new THREE.Mesh(
-    new THREE.TorusGeometry(0.04, 0.009, 12, 28, Math.PI), matFrame
+    new THREE.TorusGeometry(0.042, 0.0085, 10, 28, Math.PI), matFrame
   );
-  guard.position.set(0, -0.105, 0.05);
+  guard.position.set(0, -0.062, 0.036);
   guard.rotation.set(Math.PI / 2, 0, 0);
   gun.add(guard);
 
-  // 扳机护圈前连接处
+  // 护圈前连接段
   const guardFront = new THREE.Mesh(
-    new THREE.BoxGeometry(0.012, 0.025, 0.025), matFrame
+    new THREE.BoxGeometry(0.014, 0.026, 0.024), matFrame
   );
-  guardFront.position.set(0, -0.07, 0.08);
+  guardFront.position.set(0, -0.030, 0.074);
   gun.add(guardFront);
 
-  // === 扳机 trigger ===
-  const trigger = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.04, 0.015), matSteel);
-  trigger.position.set(0, -0.095, 0.07);
+  // 扳机
+  const trigger = new THREE.Mesh(
+    roundedExtrude({ w: 0.013, h: 0.040, r: 0.004, depth: 0.014, bevel: 0.002 }),
+    matSteel
+  );
+  trigger.rotation.x = Math.PI / 2;
+  trigger.position.set(0, -0.062, 0.056);
   gun.add(trigger);
 
-  // === 击锤 hammer ===
-  const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.025), matSteel);
-  hammer.position.set(0, 0.02, -0.30);
+  // ================= 击锤 Hammer =================
+  const hammer = new THREE.Mesh(
+    roundedExtrude({ w: 0.048, h: 0.032, r: 0.010, depth: 0.024, bevel: 0.004 }),
+    matSteel
+  );
+  hammer.position.set(0, 0.030, -0.284);
   gun.add(hammer);
 
-  // 击锤顶部锯齿
-  for (let i = 0; i < 4; i++) {
-    const spur = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.005, 0.006), matSerr);
-    spur.position.set(0, 0.034, -0.30 + (i - 1.5) * 0.008);
-    gun.add(spur);
-  }
+  // 击锤扳起时的指槽
+  const hammerSpur = new THREE.Mesh(
+    new THREE.BoxGeometry(0.036, 0.006, 0.012), matDark
+  );
+  hammerSpur.position.set(0, 0.048, -0.292);
+  hammerSpur.rotation.x = 0.25;
+  gun.add(hammerSpur);
 
-  // === 保险 thumb safety（左侧突起） ===
-  const safety = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.022, 0.07), matSteel);
-  safety.position.set(0.085, -0.02, -0.05);
+  // ================= 保险 Thumb Safety =================
+  const safety = new THREE.Mesh(
+    roundedExtrude({ w: 0.060, h: 0.022, r: 0.006, depth: 0.024, bevel: 0.003 }),
+    matSteel
+  );
+  safety.rotation.y = Math.PI / 2;
+  safety.position.set(0.084, -0.014, -0.046);
   gun.add(safety);
 
-  // 保险开关的小翼
-  const safetyLever = new THREE.Mesh(
-    new THREE.BoxGeometry(0.008, 0.018, 0.04), matSteel
+  // 保险拨杆端头
+  const safetyTip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.010, 0.010, 0.016, 10), matSteel
   );
-  safetyLever.position.set(0.092, -0.01, -0.05);
-  safetyLever.rotation.z = 0.3;
-  gun.add(safetyLever);
+  safetyTip.rotation.z = Math.PI / 2;
+  safetyTip.position.set(0.094, -0.014, -0.046);
+  gun.add(safetyTip);
 
-  // === 弹匣释放按钮 ===
-  const magRelease = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.022, 0.025), matSteel);
-  magRelease.position.set(0.082, -0.10, -0.10);
+  // ================= 弹匣释放钮 =================
+  const magRelease = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.010, 0.010, 0.012, 10), matSteel
+  );
+  magRelease.rotation.z = Math.PI / 2;
+  magRelease.position.set(0.082, -0.086, -0.128);
   gun.add(magRelease);
 
-  // === 弹匣底部凸出 ===
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.12), matSteel);
-  mag.position.set(0, -0.32, -0.20);
+  // ================= 弹匣 =================
+  const mag = new THREE.Mesh(
+    roundedExtrude({ w: 0.100, h: 0.040, r: 0.008, depth: 0.110, bevel: 0.004 }),
+    matSteel
+  );
   mag.rotation.x = -0.32;
+  mag.position.set(0, -0.310, -0.196);
   gun.add(mag);
 
   // 弹匣底板
   const magBase = new THREE.Mesh(
-    new THREE.BoxGeometry(0.11, 0.012, 0.13), matFrame
+    new THREE.BoxGeometry(0.108, 0.010, 0.120), matFrame
   );
-  magBase.position.set(0, -0.34, -0.20);
   magBase.rotation.x = -0.32;
+  magBase.position.set(0, -0.334, -0.200);
   gun.add(magBase);
 
-  // === 前准星 front sight + 白点 ===
-  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.018, 0.010), matSight);
-  frontSight.position.set(0, 0.044, 0.26);
+  // ================= 前准星 =================
+  // 三角柱造型（真实 M1911 前端小三角）
+  const frontSightGeo = new THREE.ConeGeometry(0.010, 0.020, 4);
+  const frontSight = new THREE.Mesh(frontSightGeo, matSight);
+  frontSight.rotation.set(Math.PI / 2, Math.PI / 4, 0);
+  frontSight.position.set(0, 0.066, 0.246);
   gun.add(frontSight);
-  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0035, 12), matDot);
-  dot.position.set(0, 0.046, 0.266);
+
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.0032, 10), matDot);
+  dot.position.set(0, 0.068, 0.257);
   gun.add(dot);
 
-  // === 后准星 rear sight（两片叶 + 横梁 + 缺口） ===
+  // ================= 后照门 Rear Sight =================
+  // 缺口式照门：两片立叶 + 底部横梁
   for (const sx of [-1, 1]) {
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.018, 0.020), matSight);
-    leaf.position.set(sx * 0.03, 0.044, -0.24);
+    const leaf = new THREE.Mesh(
+      new THREE.BoxGeometry(0.014, 0.020, 0.022), matSight
+    );
+    leaf.position.set(sx * 0.028, 0.068, -0.228);
     gun.add(leaf);
   }
-  const sightBridge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.006, 0.02), matSight);
-  sightBridge.position.set(0, 0.044, -0.24);
-  gun.add(sightBridge);
-  // 后准星缺口
-  const notch = new THREE.Mesh(
-    new THREE.BoxGeometry(0.022, 0.004, 0.008),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  const sightBase = new THREE.Mesh(
+    new THREE.BoxGeometry(0.074, 0.007, 0.024), matSight
   );
-  notch.position.set(0, 0.048, -0.235);
+  sightBase.position.set(0, 0.058, -0.228);
+  gun.add(sightBase);
+
+  // 照门缺口（黑）
+  const notch = new THREE.Mesh(
+    new THREE.BoxGeometry(0.021, 0.005, 0.008), matHole
+  );
+  notch.position.set(0, 0.074, -0.232);
   gun.add(notch);
 
-  // === 全部启用阴影 ===
+  // ================= 阴影策略 =================
+  // 仅大件投影，小装饰件跳过，节省阴影 pass
   gun.traverse(o => {
-    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    if (o.isMesh || o.isInstancedMesh) {
+      o.castShadow = false;          // 第一人称枪械已在视野内，投影价值低
+      o.receiveShadow = false;
+    }
   });
 
   return gun;
 }
 
-// 把手枪挂载到相机右下方（第一人称视角）
+// 挂载到相机右下方，第一人称视角
 export function attachWeapon(camera) {
   const weapon = createM1911();
-  weapon.position.set(0.20, -0.18, -0.45);
-  weapon.rotation.set(0.02, 0.02, 0);
+  weapon.position.set(0.20, -0.20, -0.46);
+  weapon.rotation.set(0.020, 0.030, -0.010);
   weapon.name = 'weapon';
   camera.add(weapon);
   return weapon;

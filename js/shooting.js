@@ -1,71 +1,150 @@
-// 射击：射线检测 + 枪口闪光 + 爆炸粒子 + 计分
+// 射击：射线检测 + 枪口闪光 + 爆炸粒子 + 计分 + 音效
 import * as THREE from 'three';
 import { state } from './state.js';
 import { getBalloons, removeBalloon, maintainBalloons } from './balloon.js';
 
 const raycaster = new THREE.Raycaster();
-const center = new THREE.Vector2(0, 0);   // 屏幕中心
+const center = new THREE.Vector2(0, 0);
 const particles = [];
 
 let muzzleFlash = null;
 let muzzleTimer = 0;
-const MUZZLE_DURATION = 0.06;
+const MUZZLE_DURATION = 0.08;
 
-// 枪口闪光：扁平 sprite 贴在枪口，不会穿透墙面形成半圆
+// === 音效系统 ===
+let audioCtx = null;
+let gunshotBuffer = null;
+
+// 初始化音频（必须在用户交互后调用）
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { return; }
+
+  // 加载 M1911 枪声 mp3
+  fetch('assets/gunshot-indoor.mp3')
+    .then(r => r.arrayBuffer())
+    .then(buf => audioCtx.decodeAudioData(buf))
+    .then(decoded => { gunshotBuffer = decoded; })
+    .catch(() => {});
+}
+
+// 播放枪声
+function playGunshot() {
+  if (!audioCtx || !gunshotBuffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = gunshotBuffer;
+  src.playbackRate.value = 0.95 + Math.random() * 0.1;  // 轻微变调
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.55;
+  src.connect(gain).connect(audioCtx.destination);
+  src.start();
+}
+
+// 合成气球破裂 pop 声
+function playPop() {
+  if (!audioCtx) return;
+  const dur = 0.08;
+  const sr = audioCtx.sampleRate;
+  const buffer = audioCtx.createBuffer(1, Math.floor(sr * dur), sr);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    const t = i / data.length;
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 900 + Math.random() * 400;
+  filter.Q.value = 2.5;
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.4;
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start();
+}
+
+// 枪口闪光：用 Sprite 永久正对相机，避免被视锥/朝向算错时出现"半圆"
 function createMuzzleFlash(camera) {
-  const flash = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.12, 0.12),
-    new THREE.MeshBasicMaterial({
-      color: 0xffcc55,
+  const group = new THREE.Group();
+  group.position.set(0.20, -0.16, -0.14);   // 枪管前端
+  group.visible = false;
+  group.renderOrder = 999;                   // 最后绘制，避免与枪体深度冲突
+
+  function makeSprite(size, color, opacity) {
+    const mat = new THREE.SpriteMaterial({
+      color,
       transparent: true,
-      opacity: 0,
+      opacity,
+      depthTest: false,     // 关键：不被枪体/墙面切割成半圆
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-    })
-  );
-  // 定位在枪管口处（枪整体在 0.20,-0.18,-0.45，枪管口在枪本地 z=0.32）
-  flash.position.set(0.20, -0.16, -0.13);
-  flash.visible = false;
-  camera.add(flash);
-  return flash;
+    });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.setScalar(size);
+    sp.renderOrder = 999;
+    return sp;
+  }
+
+  const outer = makeSprite(0.20, 0xffeeaa, 0.75);
+  const mid   = makeSprite(0.13, 0xffffcc, 0.9);
+  const inner = makeSprite(0.07, 0xffffff, 1.0);
+
+  group.add(outer);
+  group.add(mid);
+  group.add(inner);
+  camera.add(group);
+  return { group, outer, mid, inner };
 }
 
 export function initShooting(camera) {
   muzzleFlash = createMuzzleFlash(camera);
+
   document.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
     if (document.pointerLockElement !== document.body) return;
+    if (!audioCtx) initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     fire(camera);
   });
 }
 
-// 开火：射线 + 闪光 + 命中处理
+// 开火：枪声 + 射线 + 闪光 + 命中处理
 export function fire(camera) {
   if (!state.running) return;
 
+  playGunshot();
   triggerMuzzleFlash();
 
   raycaster.setFromCamera(center, camera);
   const targets = getBalloons();
   const hits = raycaster.intersectObjects(targets, true);
 
-  if (hits.length === 0) return;
+  let hitBalloon = false;
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !targets.includes(obj)) obj = obj.parent;
+    if (targets.includes(obj)) {
+      onHitBalloon(obj, hits[0].point);
+      hitBalloon = true;
+    }
+  }
 
-  // 向上找到属于 balloons 数组的根
-  let obj = hits[0].object;
-  while (obj.parent && !targets.includes(obj)) obj = obj.parent;
-  if (targets.includes(obj)) {
-    onHitBalloon(obj, hits[0].point);
+  // 挑战模式：空枪扣 10 分
+  if (!hitBalloon && state.mode === 'challenge') {
+    state.score = Math.max(0, state.score - 10);
+    document.dispatchEvent(new CustomEvent('score:updated', { detail: state.score }));
   }
 }
 
 function onHitBalloon(balloon, hitPoint) {
   const u = balloon.userData;
-  // 半径越小分数越高（小气球更难命中）
   const points = Math.round(20 + (0.50 - u.radius) * 80);
   state.score += points;
   state.lastHitTime = performance.now();
 
+  playPop();
   spawnExplosion(hitPoint, u.color);
 
   removeBalloon(balloon);
@@ -74,11 +153,18 @@ function onHitBalloon(balloon, hitPoint) {
   document.dispatchEvent(new CustomEvent('score:updated', { detail: state.score }));
 }
 
+// Sprite 基础尺寸，缩放时基于它乘系数
+const FLASH_BASE = { outer: 0.20, mid: 0.13, inner: 0.07 };
+
 function triggerMuzzleFlash() {
   if (!muzzleFlash) return;
-  muzzleFlash.visible = true;
-  muzzleFlash.material.opacity = 1.0;
-  muzzleFlash.scale.setScalar(1);
+  muzzleFlash.group.visible = true;
+  muzzleFlash.outer.material.opacity = 0.75;
+  muzzleFlash.mid.material.opacity = 0.9;
+  muzzleFlash.inner.material.opacity = 1.0;
+  muzzleFlash.outer.scale.setScalar(FLASH_BASE.outer);
+  muzzleFlash.mid.scale.setScalar(FLASH_BASE.mid);
+  muzzleFlash.inner.scale.setScalar(FLASH_BASE.inner);
   muzzleTimer = MUZZLE_DURATION;
 }
 
@@ -118,11 +204,16 @@ export function updateEffects(dt) {
   if (muzzleFlash && muzzleTimer > 0) {
     muzzleTimer -= dt;
     const ratio = Math.max(0, muzzleTimer / MUZZLE_DURATION);
-    muzzleFlash.material.opacity = ratio;
-    muzzleFlash.scale.setScalar(1 + (1 - ratio) * 0.8);
-    // 让闪光始终面向相机
-    muzzleFlash.lookAt(state.camera.position);
-    if (muzzleTimer <= 0) muzzleFlash.visible = false;
+    const expand = (1 - ratio) * 1.2;
+
+    muzzleFlash.outer.material.opacity = 0.75 * ratio;
+    muzzleFlash.mid.material.opacity = 0.9 * ratio;
+    muzzleFlash.inner.material.opacity = 1.0 * ratio;
+    // Sprite 始终正对相机，无需 lookAt；缩放基于基础尺寸
+    muzzleFlash.outer.scale.setScalar(FLASH_BASE.outer * (1 + expand * 0.8));
+    muzzleFlash.mid.scale.setScalar(FLASH_BASE.mid * (1 + expand * 0.5));
+    muzzleFlash.inner.scale.setScalar(FLASH_BASE.inner * (1 + expand * 0.2));
+    if (muzzleTimer <= 0) muzzleFlash.group.visible = false;
   }
 
   for (let i = particles.length - 1; i >= 0; i--) {
@@ -134,7 +225,7 @@ export function updateEffects(dt) {
       b.mesh.position.x += b.vel.x * dt;
       b.mesh.position.y += b.vel.y * dt;
       b.mesh.position.z += b.vel.z * dt;
-      b.vel.y -= 5 * dt;            // 重力
+      b.vel.y -= 5 * dt;
       b.mesh.rotation.x += b.spin * dt;
       b.mesh.rotation.y += b.spin * dt;
       b.mesh.material.opacity = 1 - t;

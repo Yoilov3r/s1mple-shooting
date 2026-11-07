@@ -19,3 +19,6 @@ build/
 *.spec
 __pycache__/
 *.pyc
+
+# 备份的独立 exe 副本（版本不适合 git 管理）
+backups/
