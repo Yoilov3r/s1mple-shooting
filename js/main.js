@@ -21,10 +21,11 @@ function createRenderer() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;  // 柔和阴影边缘
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // ACES Filmic 略过强高光压缩，让画面更干净
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.3;
+  renderer.toneMappingExposure = 1.1;
   renderer.sortObjects = false;
   document.body.appendChild(renderer.domElement);
   return renderer;
