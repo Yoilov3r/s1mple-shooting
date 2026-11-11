@@ -67,7 +67,7 @@ function animate() {
   state.renderer.render(state.scene, state.camera);
 }
 
-function bootstrap() {
+async function bootstrap() {
   state.scene = createScene();
   state.camera = createCamera();
   state.renderer = createRenderer();
@@ -81,7 +81,7 @@ function bootstrap() {
 
   // 相机加入场景，才能让挂在相机下的手枪被渲染
   state.scene.add(state.camera);
-  attachWeapon(state.camera);
+  await attachWeapon(state.camera);
 
   // 射击系统
   initShooting(state.camera);
@@ -99,4 +99,4 @@ function bootstrap() {
   animate();
 }
 
-bootstrap();
+bootstrap().catch(err => console.error('[bootstrap] 启动失败', err));
